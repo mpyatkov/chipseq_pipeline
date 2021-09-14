@@ -1,0 +1,466 @@
+---
+title: "Peak_Union_Count_Stats"
+author: "ChIP_DNase_Pipeline (Andy Rampersaud)"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+#Note the tab spaces are required for reading header.tex
+#Use a specific LaTex package
+#Need the "array" package to align fixed width columns
+output:
+    pdf_document:
+        dev: png
+        includes:
+            in_header: header.tex
+---
+
+<!-- Link to insert current date in the YAML header:-->
+<!-- http://stackoverflow.com/questions/23449319/yaml-current-date-in-rmarkdown -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#Load libraries:
+library('knitr')
+library(ggplot2)
+library(scales)
+library(xtable)
+library(gtools)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk into the report.
+
+## bigWig Normalization: Reads in Peak per Million (RiPPM)
+
+Normalization is meant to allow for comparisons between UCSC tracks or bigWig files among different data sets.  The method of normalization should be general and not data set specific.  Ideally, the same procedure would be applied to multiple datasets and thereby allow for valid comparisons between these different datasets.  For this method there is no sample chosen to be the "standard" sample, instead we use a constant value as the "standard".
+
+To enable comparisons between different datasets, we can use a variation of the read per million (RPM) calculation.
+
+References:
+
+* [(RPM) calculation](http://www.rna-seqblog.com/rpkm-fpkm-and-tpm-clearly-explained/)
+
+* [deepTools bamCoverage](http://deeptools.readthedocs.io/en/latest/content/tools/bamCoverage.html)
+
+* [Comparing samples with different read counts](https://www.biostars.org/p/10961/)
+
+<!-- NOTE: Be careful when copying text from webpages and pasting into Rmd scripts.  Some characters (e.g. long dash and invisible) may cause some R Markdown code from compiling correctly.
+DO NOT copy text from webpages into Rmd scripts-->
+
+```{r Setup_DIR, include=FALSE}
+#-----------------------------------------------------------------------
+#Need to set the dir so that this script can work in any folder:
+dir <- getwd()
+setwd(dir)
+#Save Peak_Union_Count location
+Peak_Union_Count_DIR <- paste(dir, "/", "Peak_Union_Count", sep="")
+#-----------------------------------------------------------------------
+```
+
+```{r Load_Summary_Table, include=FALSE}
+#Need the option: stringsAsFactors = FALSE
+#Note: there maybe an extra trailing space in columns
+#http://faculty.nps.edu/sebuttre/home/R/factors.html
+Summary_Table <- read.table(paste(dir, "/", "Peak_Union_Count_Stats.txt", sep=""), header=TRUE, sep = "\t", stringsAsFactors = FALSE)
+#View(Summary_Table)
+#dim(Summary_Table)
+#[1] 5 6
+```
+
+<!-- Links for xtable options -->
+<!-- I needed knitr to respect the order of the chucks -->
+<!-- Somehow tables were being moved around text (around page breaks) -->
+<!-- Need to use the "floating = FALSE" option for all xtable print commands -->
+<!-- http://stackoverflow.com/questions/36367657/r-knitr-doesnt-respect-order-of-chunks-and-text -->
+
+\newpage
+
+\blandscape
+
+## Peak_Union_Count_Stats Summary Table:
+
+<!-- Landscape page -->
+
+```{r Show_Summary_Table, echo=F,results='asis',error=F,warning=F}
+#https://rpubs.com/yit/display_dataframe_with_Rpres_Rmd
+# kable(Summary_Table, format = "markdown", align = "c", format.args = list(big.mark = ','))
+#http://kbroman.org/knitr_knutshell/pages/figs_tables.html
+#https://rpubs.com/benmarwick/tables-rmarkdown
+#include.rownames=FALSE
+#http://stackoverflow.com/questions/15487421/control-number-of-decimal-places-on-xtable-output-in-r
+#http://tex.stackexchange.com/questions/171787/xtable-and-sweave
+# print(xtable(Summary_Table, digits=c(0,0,0,0,0,0,4), align="ccccccc"), type="html", include.rownames=FALSE, format.args = list(big.mark = ','))
+#Katia gave me a working version of xtable for pdf output:
+#Want to have centered columns with verticle lines:
+#https://cran.r-project.org/web/packages/xtable/vignettes/xtableGallery.pdf
+#Test command:
+#http://stackoverflow.com/questions/31998998/multiline-table-header-using-knitr-and-latex
+#Test commands:
+#Replace underscores with spaces in the colnames to allow text wrapping
+#This works for wrapping text!
+LaTex_Table <- Summary_Table
+colnames(LaTex_Table) <- gsub("_", " ", colnames(LaTex_Table))
+#Replace underscores in the column:
+LaTex_Table$Description <- gsub("_", " ", LaTex_Table$Description)
+#Use the "C" from the "array" package to do the alignment for fixed width columns
+#https://cran.r-project.org/web/packages/xtable/vignettes/xtableGallery.pdf
+#http://tex.stackexchange.com/questions/171711/how-to-include-latex-package-in-r-markdown
+center_vert_lines <- paste(rep("C{3cm}|", ncol(LaTex_Table)+1), collapse = '')
+align_string <- paste("|", center_vert_lines, sep="")
+print(xtable(LaTex_Table, digits=c(0,0,0,0,0,0,4), align=align_string), comment=F, scalebox=1.0, include.rownames = FALSE, size = "\\large", format.args = list(big.mark = ','), hline.after=-1:nrow(LaTex_Table), floating = FALSE)
+#Working commands:
+# center_vert_lines <- paste(rep("c|", ncol(Summary_Table)+1), collapse = '')
+# align_string <- paste("|", center_vert_lines, sep="")
+# print(xtable(Summary_Table, digits=c(0,0,0,0,0,0,4), align=align_string), comment=F, scalebox=0.85, include.rownames = FALSE, size = "\\normalsize", format.args = list(big.mark = ','))
+#kable table is too large for the PDF (table is cutoff)
+#kable(Summary_Table, format = "markdown", align = "c", format.args = list(big.mark = ','))
+```
+
+\elandscape
+
+\newpage
+
+<!-- More portrait pages -->
+
+```{r Load_Count_Files, include=FALSE}
+setwd(Peak_Union_Count_DIR)
+#List files in current folder:
+#list.files()
+#Generate list of files in current dir
+#Pattern is *_read_Peak_Union.out1
+file_list = list.files(pattern = '*_read_Peak_Union.out1')
+#Since the count files have redundant columns, just use the first file to get the initial columns
+first_file <- file_list[1]
+Count_Data_All_Samples <- read.table(first_file, header = TRUE, sep = "\t")
+#Only want the first 4 columns:
+Count_Data_All_Samples <- Count_Data_All_Samples[, 1:4]
+#Sample-specific counts will be appended using a merge on peak ID
+#loop to read in all data
+for (file_name in file_list) {
+print (file_name)
+#Get substring of file_name
+#-----------------------------------------------------------------------
+#Rather than split by underscore and retrieving the first two elements
+#A more general solution would be to omit the "_read_Peak_Union.out1" part of the file name
+#Sample labels may not always be: G#_M#
+#Sample labels may be some variation like: G#_G#_M#
+#Or any other naming nomenclature
+#Instead of using "strsplit", use "sub"
+#-----------------------------------------------------------------------
+#Split by "_" then print the G#_M#
+#bname <- sapply(strsplit(file_name,split="_"),function(x)paste(x[1],"_",x[2],sep=""))
+#-----------------------------------------------------------------------
+bname <- sub("_read_Peak_Union.out1", "", file_name)
+#-----------------------------------------------------------------------
+# print(bname)
+#Read in each output file
+Count_data <- read.table(file_name, header = TRUE, sep = "\t")
+#Only want the peak ID and the counts:
+Count_data <- Count_data[, c("Union_Peak_ID", "Read_In_Peak_Count")]
+#Add the sample_ID to the column name
+colnames(Count_data)[dim(Count_data)[2]] <- paste(bname,"_","Read_In_Peak_Count", sep="")
+#Need this "assign" to create a different dataframe/file (each dataframe will take the name of the file)
+assign(file_name, Count_data)
+#Append the sample-specific counts to the Count_Data_All_Samples dataframe
+#Doing a merge is the safest way to append data
+Count_Data_All_Samples <-  merge(Count_Data_All_Samples,Count_data,by="Union_Peak_ID")
+}
+#End of for loop
+#Now work with the Count_Data_All_Samples dataframe
+#View(Count_Data_All_Samples)
+#Difficult trying to sort a column with letters and numbers
+#Remove the string from the Union_Peak_ID column
+Count_Data_All_Samples$Union_Peak_ID <- gsub("Union_Peak_", "", Count_Data_All_Samples$Union_Peak_ID)
+#View(Count_Data_All_Samples)
+Count_Data_All_Samples <- Count_Data_All_Samples[order(as.numeric(Count_Data_All_Samples$"Union_Peak_ID")), ]
+#View(Count_Data_All_Samples)
+Sample_Count <- dim(Count_Data_All_Samples)[2]-4
+Peak_Count <- formatC(dim(Count_Data_All_Samples)[1], format="d", big.mark=',')
+```
+
+A "Count_Data_All_Samples" data frame contains the Union_Peak_ID, peak coordinates (chrom, chromStart, chromEnd), and sample specific read in peak counts.  
+
+**This data frame indicates there are `r Sample_Count` samples and `r Peak_Count` peak union sites.**
+
+**Note:**
+
+* The pairs analysis will only run if the Sample_Count is less than or equal to 9 samples.
+* For data sets with greater than 9 samples; this pairs analysis will be skipped.
+
+## Matrix of pairwise scatterplot and Pearson correlation values (raw counts of reads in peak union regions):
+
+```{r pairs_analysis, echo=FALSE}
+#RCS tutorial example pairs command:
+#Local location:
+#/media/Internal_Data_01/Documents/Waxman_Lab/Lab_Presentations/7th_Year/Spring_2017/RCS_Tutorials/R_Graphics_Tutorial
+#Need to extract the count columns only:
+final_col <- dim(Count_Data_All_Samples)[2]
+#Want to omit (first 4 columns)
+first_col <- 5
+plot_data <- Count_Data_All_Samples[first_col:final_col]
+#Also want shorter namee for the plot
+plot_labels <- gsub("_Read_In_Peak_Count", "", names(Count_Data_All_Samples[first_col:final_col]))
+#http://www2.warwick.ac.uk/fac/sci/moac/people/students/peter_cock/r/iris_plots/
+#http://www2.warwick.ac.uk/fac/sci/moac/people/students/peter_cock/r/iris_plots/
+panel.pearson <- function(x, y, ...) {
+horizontal <- (par("usr")[1] + par("usr")[2]) / 2;
+vertical <- (par("usr")[3] + par("usr")[4]) / 2;
+text(horizontal, vertical, format(abs(cor(x,y)), digits=2), cex=2)
+}
+#End of panel.pearson function
+#The graphical parameters pch and col can be used to specify a vector of plotting symbols and colors to be used in the plots.
+#http://stat.ethz.ch/R-manual/R-devel/library/graphics/html/pairs.html
+#http://www.endmemo.com/program/R/pchsymbols.php
+#pch = 20 will be a small solid cirle (rather than open circle)
+#-----------------------------------------------------------------------
+#Use an if statement to check the number of samples before doing pairs analysis
+#Too many samples will either take a long time or cause an error
+#A reasonable number of samples to use for pairs analysis: 9
+#This way there could be (n = 3 control), (n = 3 treatment), (n = 3 combined samples)
+if (Sample_Count <= 9) {
+  matrix_plot <- pairs(plot_data, labels=plot_labels, upper.panel=panel.pearson, pch = 20)
+}
+#-----------------------------------------------------------------------
+#Extract the sample IDs only:
+names(plot_data) <- gsub("_Read_In_Peak_Count", "", names(plot_data))
+```
+
+Box plot distributions are typically dominated by peak union regions with very high read counts.  The following summaries indicate the read count distribution for each sample:
+
+###Summary of read count distributions (per sample)
+
+```{r summarize_distributions, echo=FALSE}
+lapply(plot_data, summary)
+#Quantify the issue of peak union regions with all zero counts
+zero_count_sites <- dim(plot_data[rowSums(plot_data)==0,])[1]
+```
+
+**Note:**
+There maybe some peak union regions which yield a zero count of reads (for all samples).  This is most likely due to the BAM file (\*_sorted_mapped.bam) being used for macs2 peak discovery and the BED file (\*_fragments.bed.gz) used for counting reads in peak regions.
+
+Using macs2 with the BAM file is preferred for faster data processing.  BEDTools, however, does not properly treat BAM files as paired-end data (correctly counts reads but not fragments).  For BEDTools counting, I needed to use the BED file (\*_fragments.bed.gz) to obtain correct fragment in peak counts.
+
+The same data should be present between the BAM and BED file, however, there maybe a precision issue between macs2 and BEDTools.
+
+**The number of peak union sites with zero counts across all samples: `r zero_count_sites` sites.**  Given the small number of sites, this is a minor issue.
+
+## Procedure for RiPPM normalization
+
+Procedure for **RPM**:
+
+1. Count up the total reads in a sample and divide that number by 1,000,000 - this is our "per million" scaling factor.
+2. Divide the raw read counts by the "per million" scaling factor. This normalizes for sequencing depth, giving you reads per million (RPM).
+
+The variation we want to implement: instead of using **total reads** we want to use the **reads in peaks**.
+
+<!-- Link for making fractions in R Mardown documents: -->
+<!-- http://www.statpower.net/Content/310/R%20Stuff/SampleMarkdown.html -->
+
+Procedure for **RiPPM**:
+
+1. Count up the **total reads in the peak union sites** in a sample and divide that number by 1,000,000 - this is our "per million" scaling factor.
+    <!-- a. scaling factor = (total reads in peak union sites)/(1,000,000) -->
+    a. $$\text{RiPPM factor} = \frac{\text{total reads in peak union sites}}{1,000,000}$$
+2. Divide the read counts by the "per million" scaling factor (i.e. the RiPPM factor). This normalizes for sequencing depth, giving you the **reads in peak** per million (RiPPM) count for that peak union site.
+    <!-- a. RiPPM = (raw read counts)/(scaling factor) -->
+    a. $$\text{RiPPM normalized read count} = \frac{\text{raw read count}}{\text{RiPPM factor}}$$
+
+\newpage
+
+\blandscape
+
+<!-- Landscape page -->
+
+### Example for this dataset:
+
+Restating columns from the "Peak_Union_Count_Stats Summary Table":
+
+```{r Norm_Table_v2, echo=F,results='asis',error=F,warning=F}
+Norm_Table <- Summary_Table[, c(1,2,5)]
+print(xtable(Norm_Table, digits=c(0,0,0,0), align="cccc"), comment=F, scalebox=1.0, include.rownames=FALSE, format.args = list(big.mark = ','), floating = FALSE)
+#Per million:
+standard_signal <- 1000000
+```
+
+Calculating sample-specific RiPPM factors:
+
+```{r Norm_Table_Factor_v2, echo = FALSE, results='asis', error=F, warning=F}
+Norm_Table$RiPPM_Factor <- signif((Norm_Table$FRAGMENT_IN_PEAK_COUNT)/(standard_signal), digits = 3)
+print(xtable(Norm_Table, digits=c(0,0,0,0,2), align="ccccc"), comment=F, scalebox=1.0, include.rownames=FALSE, format.args = list(big.mark = ','), floating = FALSE)
+```
+
+##Convert RiPPM factors to normalization factors
+
+If the RiPPM factors were directly applied to the data, the counts before normalization would be very different compared to the counts after normalization.  An additional step is needed to convert these RiPPM factors to normalization factors by setting one sample to be the "standard".  By definition, this standard sample will always have a normalization factor equal to 1. The following procedure details this conversion:
+
+Calculating sample-specific normalization factors:
+
+1. The standard sample will be the sample with the minimum RiPPM factor value.  In other words, the standard RiPPM factor = min(all RiPPM factors calculated above).
+    a. Rationale for using the minimum: in practice rather than scaling up, it's best to always scale read counts down.  When read counts in low-coverage areas are scaled up, this results in inflated read counts in those regions resulting in spotty read signal coverage in smoothed density wiggle tracks (on the UCSC Genome Browser).  To avoid this issue, rather than the average or the maximum, it's best to use the minimum of all the RiPPM factors.
+2. The sample-specific normalization factor is defined by:
+    a. $$\text{Norm Factor} = \frac{\text{standard RiPPM factor}}{\text{RiPPM factor}}$$
+3. These normalization factors will then be used to obtain the RiPPM normalized read counts. Note: rather than dividing by the RiPPM factor, we now need to multiply the raw read counts by the normalization factor.
+    a. $$\text{RiPPM normalized read count} = \text{(raw read count) * (Norm Factor)}$$
+
+```{r Convert_RiPPM_Norm_Factor, echo = FALSE, results='asis', error=F, warning=F}
+#-----------------------------------------
+#Use the sample with the min RiPPM factor:
+standard <- min(Norm_Table$RiPPM_Factor)
+#-----------------------------------------
+#Use the average RiPPM factor:
+# standard <- mean(Norm_Table$RiPPM_Factor)
+#-----------------------------------------
+Norm_Table$Norm_Factor <- signif((standard/Norm_Table$RiPPM_Factor), digits = 3)
+#Print the table of factors:
+print(xtable(Norm_Table, digits=c(0,0,0,0,2,2), align="cccccc"), comment=F, scalebox=1.0, include.rownames=FALSE, format.args = list(big.mark = ','), floating = FALSE)
+#Need a text file of Norm_Table to use for bigWig file creation:
+#Set dir for text file saving:
+setwd(dir)
+#Drop the RiPPM_Factor column:
+drops <- c("RiPPM_Factor")
+Norm_Table_out <- Norm_Table[, !(names(Norm_Table) %in% drops)]
+write.table(Norm_Table_out, file = (paste(dir,"/", "Norm_Factors.txt",sep="")), quote=FALSE, sep = "\t",row.names = FALSE,col.names = TRUE)
+```
+
+**Next:** raw sample-specific read in peak counts will be normalized to obtain the normalized counts.  I will then create boxplots to evaluate the normalization.
+
+```{r normalize_counts_v2, echo=FALSE}
+#Now for each sample:
+#   Multiply raw counts by the sample-specific normalization factor
+#   Save the normalized counts into another dataframe
+#Somehow an extra space character was in the Norm_Table$SAMPLE_ID column
+#Check this by doing:
+#Norm_Table$SAMPLE_ID == Sample_ID
+#Should a single TRUE value
+#Need to remove extra spaces:
+Norm_Table$SAMPLE_ID <- trimws(Norm_Table$SAMPLE_ID, which = c("both"))
+#Need a new data frame to save the normalized counts
+#Need a dataframe with dimensions (can't do empty dataframe)
+data_norm <- Count_Data_All_Samples[, 1:4]
+#Generate list of samples:
+for (Sample_ID in plot_labels) {
+  #print (Sample_ID)
+  #Retrieve the norm factor
+  sample_norm_factor <- Norm_Table$Norm_Factor[Norm_Table$SAMPLE_ID == Sample_ID]
+  #print(sample_norm_factor)
+  #Divide the read counts by the “per million” scaling factor. This normalizes for sequencing depth, giving you reads per million (RPM)
+  #----------------------------------------------------
+  #If you are using the RiPPM_Factor to normalize raw counts (use division):
+  #Normalized counts = (raw count) / (RiPPM_Factor)
+  # Norm_Count <- signif((plot_data[names(plot_data) == Sample_ID]) / (sample_norm_factor), digits = 3)
+  #----------------------------------------------------
+  #If you are using the Norm_Factor (need to multiply rather than divide)
+  #Normalized counts = (raw count) * (Norm_Factor)
+  Norm_Count <- signif((plot_data[names(plot_data) == Sample_ID]) * (sample_norm_factor), digits = 3)
+  #----------------------------------------------------
+  colnames(Norm_Count) <- Sample_ID
+  #Append the end of the data frame
+  data_norm <- cbind.data.frame(data_norm, Norm_Count)
+}
+#End of for loop
+#Need to extract the count columns only:
+final_col <- dim(data_norm)[2]
+#Want to omit (first 4 columns)
+first_col <- 5
+plot_data_norm <- data_norm[first_col:final_col]
+#View(plot_data_norm)
+```
+
+To demonstrate that the normalization has been applied; here are tables of counts before and after normalization.
+
+## Sample of counts in peak union sites before and after normalization:
+
+### Table of counts **before** normalization:
+
+```{r show_before_table_v2, echo = FALSE}
+peak_Info <- as.data.frame(Count_Data_All_Samples[, 1])
+colnames(peak_Info) <- "Union_Peak_ID"
+before_table <- cbind.data.frame(peak_Info, plot_data)
+#View(before_table)
+#Need general options for showing data set tables
+#(there will be variable number of samples per dataset)
+kable(head(before_table), format = "markdown", row.names=FALSE, align='c')
+```
+
+### Table of counts **after** normalization:
+
+```{r show_after_table_v2, echo = FALSE}
+peak_Info <- as.data.frame(Count_Data_All_Samples[, 1])
+colnames(peak_Info) <- "Union_Peak_ID"
+after_table <- cbind.data.frame(peak_Info, plot_data_norm)
+#View(after_table)
+kable(head(after_table), format = "markdown", row.names=FALSE, align='c')
+```
+
+From the above tables, we see that raw counts have been scaled using the sample-specific normalization factors.  Next I want to compare boxplots before and after normalization to evaluate normalization on the overall distribution of counts.
+
+\elandscape
+
+\newpage
+
+<!-- More portrait pages -->
+
+```{r boxplot_raw_counts_v2, echo=FALSE, warning=FALSE}
+#View(plot_data)
+#Need to transform the data frame:
+Stacked_Data <- stack(plot_data)
+#Need the log2 of the values to see the boxplots:
+Stacked_Data$values <- log2(Stacked_Data$values)
+#Control the tick marks:
+y_max <- max(Stacked_Data$values)
+#Increase font size:
+theme_set(theme_gray(base_size = 12))
+#Useful to plot the median of all counts:
+median_all_counts <- median(Stacked_Data$values)
+boxplot_raw_counts <- ggplot(Stacked_Data, aes(x = ind, y = values)) +
+geom_boxplot() +
+  ggtitle(paste("Boxplot of *raw* read counts in peak union sites (per sample)", "\n", "(Number of sites: ",Peak_Count, ")", "\n", "Red Line: median value of all counts",sep="")) +
+  scale_y_continuous(name = "log2(read in peak union sites)", breaks=seq(0, y_max, 2)) +
+  scale_x_discrete(name = "Sample_ID") +
+  geom_hline(yintercept=median_all_counts, colour = "red") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+#Plot on the document:
+boxplot_raw_counts
+```
+
+```{r boxplot_norm_counts_v2, echo=FALSE, warning=FALSE}
+#View(plot_data_norm)
+#Need to transform the data frame:
+Stacked_Data <- stack(plot_data_norm)
+#Need the log2 of the values to see the boxplots:
+Stacked_Data$values <- log2(Stacked_Data$values)
+#Control the tick marks:
+y_max <- max(Stacked_Data$values)
+#Increase font size:
+theme_set(theme_gray(base_size = 12))
+#Useful to plot the median of all counts:
+median_all_counts <- median(Stacked_Data$values)
+boxplot_norm_counts <- ggplot(Stacked_Data, aes(x = ind, y = values)) +
+geom_boxplot() +
+  ggtitle(paste("Boxplot of *normalized* read counts in peak union sites (per sample)", "\n", "(Number of sites: ",Peak_Count, ")", "\n", "Red Line: median value of all counts",sep="")) +
+  scale_y_continuous(name = "log2(read in peak union sites)", breaks=seq(0, y_max, 2)) +
+  scale_x_discrete(name = "Sample_ID") +
+  geom_hline(yintercept=median_all_counts, colour = "red") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+#Plot on the document:
+boxplot_norm_counts
+```
+
+## Results and Next Steps
+
+* From the boxplot of normalized read counts (in peak union sites) we see that the normalization eliminates sample-specific differences observed in the boxplot of raw read counts.  The method of RiPPM works for normalization and it is useful to have the boxplot comparison as a visual confirmation.
+
+* This analysis generates a text file of the sample-specific normalization factors (Norm_Factors.txt).  This text file will be used for subsequent bigWig file generation (a later step in the pipeline).
+
+* Please check that UCSC bigWig files work with the UCSC Genome Browser.  
+
+<!-- ### R and package versions used -->
+<!-- It's a a good idea to end with some information about the packages you -->
+<!-- used, their versions, and the version of R that you used. -->
+<!-- The `sessionInfo()` function provides this information. Even better is -->
+<!-- to install the [devtools](https://github.com/hadley/devtools) package -->
+<!-- and use `devtools::session_info()`. -->
+<!-- ```{r sessionInfo, include=TRUE, echo=TRUE, results='markup'} -->
+<!-- sessionInfo() -->
+<!-- ``` -->

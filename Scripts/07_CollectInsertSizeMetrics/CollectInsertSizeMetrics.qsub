@@ -1,0 +1,221 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 03.01.16
+#This script is called by setup_CollectInsertSizeMetrics.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+set -eu
+# Run on the current working directory
+#$ -cwd
+
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+##################################################################################
+#Initialize variables from CollectInsertSizeMetrics.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 4 ] ; then
+      echo "Need 4 arguments for the qsub command:"
+      echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} CollectInsertSizeMetrics.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${SCRIPT_DIR}"
+      exit 0
+fi
+
+#http://www.ibm.com/developerworks/library/l-bash-parameters/
+#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
+
+#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
+#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
+
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+SCRIPT_DIR=$4
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Sample_ID:"
+echo ${Sample_ID}
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "SCRIPT_DIR:"
+echo ${SCRIPT_DIR}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "Parameter for multiple cores : $NSLOTS"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#Search for latest program installed:
+#module avail -t 2>&1 | grep -i picard
+#picard/1.123(default)
+#picard/picard-1.81_jar_x86_64
+#Load module:
+module load picard/2.18.11
+module load R
+
+#module help picard/1.123
+#---------------------------------------------------------------------------------
+#----------- Module Specific Help for 'picard/1.123' ---------------
+#picard 1.123 Tools for manipulating high-throughput sequence data/formats
+#Picard comprises Java-based command-line utilities that manipulate SAM files, and a Java API (SAM-JDK) for creating new programs that read and write SAM files. Both SAM text format and SAM binary (BAM) format are supported.
+#For more information on picard, please see www.broadinstitute.github.io/picard
+#---------------------------------------------------------------------------------
+# copy user input data files to scratch
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_sorted_mapped.bam' .
+#Initialize INPUT_BAM:
+INPUT_BAM=${Sample_ID}'_sorted_mapped.bam'
+
+STORAGE_DIR=${Dataset_DIR}/${Sample_ID}/fastq/bowtie2
+#Create CollectInsertSizeMetrics output folder to store files:
+OUTPUT_DIR='CollectInsertSizeMetrics'
+###############################
+if [ ! -d $OUTPUT_DIR ]; then
+mkdir $OUTPUT_DIR
+fi
+###############################
+
+echo
+echo 'List files in scratch directory:'
+echo
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+echo
+echo 'Starting CollectInsertSizeMetrics command'
+echo
+#--------------------------------------------------------------------------------
+#CollectInsertSizeMetrics --help
+#USAGE: CollectInsertSizeMetrics [options]
+
+#Documentation: http://broadinstitute.github.io/picard/command-line-overview.html#CollectInsertSizeMetrics
+
+#Reads a SAM or BAM file and writes a file containing metrics about the statistical distribution of insert size (excluding duplicates) and generates a Histogram plot.
+
+#Version: 1.123(286a232caea2fdc8fdd88574c09c460b46386fff_1413818736)
+
+
+#Options:
+
+#--help
+#-h                            Displays options specific to this tool.
+
+#--stdhelp
+#-H                            Displays options specific to this tool AND options common to all Picard command line 
+#                              tools.
+
+#--version                     Displays program version.
+
+#HISTOGRAM_FILE=File
+#H=File                        File to write insert size Histogram chart to.  Required. 
+
+#DEVIATIONS=Double             Generate mean, sd and plots by trimming the data down to MEDIAN + 
+#                              DEVIATIONS*MEDIAN_ABSOLUTE_DEVIATION. This is done because insert size data typically 
+#                              includes enough anomalous values from chimeras and other artifacts to make the mean and 
+#                              sd grossly misleading regarding the real distribution.  Default value: 10.0. This option 
+#                              can be set to 'null' to clear the default value. 
+
+#HISTOGRAM_WIDTH=Integer
+#W=Integer                     Explicitly sets the Histogram width, overriding automatic truncation of Histogram tail. 
+#                              Also, when calculating mean and standard deviation, only bins <= Histogram_WIDTH will be 
+#                              included.  Default value: null. 
+
+#MINIMUM_PCT=Float
+#M=Float                       When generating the Histogram, discard any data categories (out of FR, TANDEM, RF) that 
+#                              have fewer than this percentage of overall reads. (Range: 0 to 1).  Default value: 0.05. 
+#                              This option can be set to 'null' to clear the default value. 
+
+#METRIC_ACCUMULATION_LEVEL=MetricAccumulationLevel
+#LEVEL=MetricAccumulationLevel The level(s) at which to accumulate metrics.    Possible values: {ALL_READS, SAMPLE, 
+#                              LIBRARY, READ_GROUP} This option may be specified 0 or more times. This option can be set 
+#                              to 'null' to clear the default list. 
+
+#INPUT=File
+#I=File                        Input SAM or BAM file.  Required. 
+
+#OUTPUT=File
+#O=File                        File to write the output to.  Required. 
+
+#REFERENCE_SEQUENCE=File
+#R=File                        Reference sequence fasta  Default value: null. 
+
+#ASSUME_SORTED=Boolean
+#AS=Boolean                    If true (default), then the sort order in the header file will be ignored.  Default 
+#                              value: true. This option can be set to 'null' to clear the default value. Possible 
+#                              values: {true, false} 
+
+#STOP_AFTER=Long               Stop after processing N reads, mainly for debugging.  Default value: 0. This option can 
+#                              be set to 'null' to clear the default value. 
+#--------------------------------------------------------------------------------
+echo 'Printing command:'
+echo "CollectInsertSizeMetrics HISTOGRAM_FILE=$OUTPUT_DIR/${Sample_ID}'_hist.pdf' INPUT=${INPUT_BAM} OUTPUT=$OUTPUT_DIR/${Sample_ID}'_metrics'"
+echo
+#Run command:
+picard CollectInsertSizeMetrics HISTOGRAM_FILE=$OUTPUT_DIR/${Sample_ID}'_hist.pdf' INPUT=${INPUT_BAM} OUTPUT=$OUTPUT_DIR/${Sample_ID}'_metrics'
+#--------------------------------------------------------------------------------
+
+echo
+echo 'Finished CollectInsertSizeMetrics command'
+echo
+
+echo
+echo 'Copy output to storage dir'
+echo
+cp -r $OUTPUT_DIR $STORAGE_DIR
+
+echo
+echo "List files in scratch"
+echo
+ls -alh
+
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"

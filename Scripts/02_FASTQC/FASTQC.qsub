@@ -1,0 +1,302 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 12.12.18
+#This script is called by FASTQC.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+set -eu
+# Run on the current working directory
+#$ -cwd
+
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+##################################################################################
+#Initialize variables from FASTQC.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 6 ] ; then
+      echo "Need 6 arguments for the qsub command:"
+      echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} FASTQC.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${BU_User} ${VM_DIR_FASTQC} ${OUTPUT_DIR}"
+      exit 0
+fi
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+BU_User=$4
+VM_DIR_FASTQC=$5
+OUTPUT_DIR=$6
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Sample_ID:"
+echo ${Sample_ID}
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "BU_User:"
+echo ${BU_User}
+echo "VM_DIR_FASTQC:"
+echo ${VM_DIR_FASTQC}
+echo "OUTPUT_DIR:"
+echo ${OUTPUT_DIR}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "Parameter for multiple cores : $NSLOTS"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#Search for latest program installed:
+#module avail -t 2>&1 | grep -i fastqc
+#fastqc/0.10.1
+#fastqc/0.11.2
+#Load module:
+#module load fastqc/0.11.2
+#---------------------------------------------------------------------------------
+#2018-08-30 10:25:13 EDT - Charles A Jahnke Additional comments (Client visible)
+#Hi Andy,
+#It looks like you're using an old version of fastqc (FASTQC.qsub:L86 module load fastqc/0.11.2) in which something similar to this is a known bug (https://github.com/s-andrews/FastQC/issues/8). Try updating that to at least fastqc/0.11.6 where that bug was fixed. We have the latest version fastqc/0.11.7 available as a module on the SCC.
+#I guess I was wrong about fastqc not having issues...
+#Charlie
+#---------------------------------------------------------------------------------
+module load fastqc
+##################################################################################
+
+##################################################################################
+#module help FASTX-Toolkit/0.0.13.2
+#---------------------------------------------------------------------------------
+#----------- Module Specific Help for 'FASTX-Toolkit/0.0.13.2' ---------------------------
+#FASTX-Toolkit 0.0.13.2: Commandline tools for short-read FASTA/FASTQ file preprocessing
+#FASTX-Toolkit is a collection of command line tools for Short-Reads FASTA/FASTQ files preprocessing.
+#For more information on FASTX-Toolkit, please see http://hannonlab.cshl.edu/fastx_toolkit/
+#---------------------------------------------------------------------------------
+
+#-----------------------------------------------------
+# copy user input data files to scratch
+#Copy over the *R1*.fastq.gz file(s):
+cp ${Dataset_DIR}/${Sample_ID}/fastq/*R1*.fastq.gz .
+#Copy over the *R2*.fastq.gz file(s):
+cp ${Dataset_DIR}/${Sample_ID}/fastq/*R2*.fastq.gz .
+#-----------------------------------------------------
+
+#Create FASTQC output folder to store files:
+FASTQC_DIR=${Sample_ID}'_FASTQC'
+###############################
+if [ ! -d $FASTQC_DIR ]; then
+mkdir $FASTQC_DIR
+fi
+###############################
+
+echo
+echo 'List files in scratch directory:'
+echo
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+echo
+echo 'Unzip files:'
+echo
+
+time gzip -d *.gz
+
+echo
+echo 'Finished unzipping'
+echo
+
+
+echo
+echo 'Print first 20 lines of FASTQ file:'
+echo
+
+head -20 *.fastq
+
+echo
+echo 'Starting FASTQC command'
+echo
+
+#--------------------------------------------------------------------------------
+#fastqc --help
+
+#            FastQC - A high throughput sequence QC analysis tool
+
+#SYNOPSIS
+
+#	fastqc seqfile1 seqfile2 .. seqfileN
+
+#    fastqc [-o output dir] [--(no)extract] [-f fastq|bam|sam] 
+#           [-c contaminant file] seqfile1 .. seqfileN
+
+#DESCRIPTION
+
+#    FastQC reads a set of sequence files and produces from each one a quality
+#    control report consisting of a number of different modules, each one of 
+#    which will help to identify a different potential type of problem in your
+#    data.
+#    
+#    If no files to process are specified on the command line then the program
+#    will start as an interactive graphical application.  If files are provided
+#    on the command line then the program will run with no user interaction
+#    required.  In this mode it is suitable for inclusion into a standardised
+#    analysis pipeline.
+#    
+#    The options for the program as as follows:
+#    
+#    -h --help       Print this help file and exit
+#    
+#    -v --version    Print the version of the program and exit
+#    
+#    -o --outdir     Create all output files in the specified output directory.
+#                    Please note that this directory must exist as the program
+#                    will not create it.  If this option is not set then the 
+#                    output file for each sequence file is created in the same
+#                    directory as the sequence file which was processed.
+#                    
+#    --casava        Files come from raw casava output. Files in the same sample
+#                    group (differing only by the group number) will be analysed
+#                    as a set rather than individually. Sequences with the filter
+#                    flag set in the header will be excluded from the analysis.
+#                    Files must have the same names given to them by casava
+#                    (including being gzipped and ending with .gz) otherwise they
+#                    won't be grouped together correctly.
+#                    
+#    --nofilter      If running with --casava then don't remove read flagged by
+#                    casava as poor quality when performing the QC analysis.
+#                   
+#    --extract       If set then the zipped output file will be uncompressed in
+#                    the same directory after it has been created.  By default
+#                    this option will be set if fastqc is run in non-interactive
+#                    mode.
+#                    
+#    -j --java       Provides the full path to the java binary you want to use to
+#                    launch fastqc. If not supplied then java is assumed to be in
+#                    your path.
+#                   
+#    --noextract     Do not uncompress the output file after creating it.  You
+#                    should set this option if you do not wish to uncompress
+#                    the output when running in non-interactive mode.
+#                    
+#    --nogroup       Disable grouping of bases for reads >50bp. All reports will
+#                    show data for every base in the read.  WARNING: Using this
+#                    option will cause fastqc to crash and burn if you use it on
+#                    really long reads, and your plots may end up a ridiculous size.
+#                    You have been warned!
+#                    
+#    -f --format     Bypasses the normal sequence file format detection and
+#                    forces the program to use the specified format.  Valid
+#                    formats are bam,sam,bam_mapped,sam_mapped and fastq
+#                    
+#    -t --threads    Specifies the number of files which can be processed
+#                    simultaneously.  Each thread will be allocated 250MB of
+#                    memory so you shouldn't run more threads than your
+#                    available memory will cope with, and not more than
+#                    6 threads on a 32 bit machine
+#                  
+#    -c              Specifies a non-default file which contains the list of
+#    --contaminants  contaminants to screen overrepresented sequences against.
+#                    The file must contain sets of named contaminants in the
+#                    form name[tab]sequence.  Lines prefixed with a hash will
+#                    be ignored.
+
+#    -a              Specifies a non-default file which contains the list of
+#    --adapters      adapter sequences which will be explicity searched against
+#                    the library. The file must contain sets of named adapters
+#                    in the form name[tab]sequence.  Lines prefixed with a hash
+#                    will be ignored.
+#                    
+#    -l              Specifies a non-default file which contains a set of criteria
+#    --limits        which will be used to determine the warn/error limits for the
+#                    various modules.  This file can also be used to selectively 
+#                    remove some modules from the output all together.  The format
+#                    needs to mirror the default limits.txt file found in the
+#                    Configuration folder.
+#                    
+#   -k --kmers       Specifies the length of Kmer to look for in the Kmer content
+#                    module. Specified Kmer length must be between 2 and 10. Default
+#                    length is 7 if not specified.
+#                    
+#   -q --quiet       Supress all progress messages on stdout and only report errors.
+#   
+#   -d --dir         Selects a directory to be used for temporary files written when
+#                    generating report images. Defaults to system temp directory if
+#                    not specified.
+#                    
+#BUGS
+
+#    Any bugs in fastqc should be reported either to simon.andrews@babraham.ac.uk
+#    or in www.bioinformatics.babraham.ac.uk/bugzilla/
+#--------------------------------------------------------------------------------
+#Run the command for each fastq file:
+FASTQ_LIST=*.fastq
+for FASTQ_FILE in ${FASTQ_LIST}
+do
+echo
+echo "Processing "${FASTQ_FILE}
+echo
+echo 'Printing command:'
+echo "fastqc --outdir ${FASTQ_FILE}"
+echo
+#Run command:
+fastqc --outdir $FASTQC_DIR ${FASTQ_FILE}
+done
+#--------------------------------------------------------------------------------
+echo
+echo 'Finished FASTQC command'
+echo
+
+echo
+echo 'Copy output to storage dir'
+echo
+cp -r $FASTQC_DIR $OUTPUT_DIR
+
+echo
+echo "List files in scratch"
+echo
+ls -alh
+
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"

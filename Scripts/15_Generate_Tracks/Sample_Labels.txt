@@ -1,0 +1,3 @@
+Sample_DIR	Sample_ID	Description	Color
+G182_M1	G182_M1	CTCF_Control	128,0,0
+G182_M2	G182_M2	CTCF_TCPOBOP_1mg	128,128,128

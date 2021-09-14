@@ -1,0 +1,752 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 03.13.17
+#This script is called by macs2.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+set -eu
+# Run on the current working directory
+#$ -cwd
+#$ -l scratch_free=200G
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+
+##################################################################################
+#Initialize variables from macs2.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 5 ] ; then
+      echo "Need 5 arguments for the qsub command:"
+      echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} macs2.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${DHS_DATA} ${SCRIPT_DIR}"
+      exit 0
+fi
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+DHS_DATA=$4
+SCRIPT_DIR=$5
+
+#http://www.ibm.com/developerworks/library/l-bash-parameters/
+#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
+
+#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
+#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Sample_ID:"
+echo ${Sample_ID}
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "DHS_DATA:"
+echo ${DHS_DATA}
+echo "SCRIPT_DIR"
+echo ${SCRIPT_DIR}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#Search for latest program installed:
+#module avail -t 2>&1 | grep -i boost
+module load boost
+#module avail -t 2>&1 | grep -i samtools
+module load samtools/0.1.19
+#module avail -t 2>&1 | grep -i bedtools
+module load bedtools/2.27.1
+#module avail -t 2>&1 | grep -i python
+#MACS2 (2.1.0.20150731) Requires this specific version of python:
+module load python2/2.7.16
+#module avail -t 2>&1 | grep -i macs
+module load macs2/2.1.2.1
+
+module load R/3.6.0
+
+#--------------------------------------
+##################################################################################
+#---------------------------------------------------------------------------------
+#module help boost/1.54.0
+#----------- Module Specific Help for 'boost/1.54.0' ---------------
+#Boost provides free peer-reviewed portable C++ source libraries.
+#http://www.boost.org/
+#---------------------------------------------------------------------------------
+#module help samtools/samtools-0.1.19_gnu446
+#----------- Module Specific Help for 'samtools/samtools-0.1.19_gnu446' ---------------------------
+#sets the environment for samtools (0.1.19) built using GNU Compilers
+#SAM (Sequence Alignment/Map) format is a generic format for storing
+#large nucleotide sequence alignments. SAM Tools provide various utilities
+#for manipulating alignments in the SAM format, including sorting, merging,
+#indexing and generating alignments in a per-position format.
+#http://samtools.sourceforge.net/
+#---------------------------------------------------------------------------------
+#module help  bedtools/2.22.0
+#----------- Module Specific Help for 'bedtools/2.22.0' ------------
+#bedtools 2.22.0 A powerful toolset for genome arithmetic
+#Collectively, the bedtools utilities are a swiss-army knife of tools for a wide-range of genomics analysis tasks. The most widely-used tools enable genome arithmetic: that is, set theory on the genome. For example, bedtools allows one to intersect, merge, count, complement, and shuffle genomic intervals from multiple files in widely-used genomic file formats such as BAM, BED, GFF/GTF, VCF. While each individual tool is designed to do a relatively simple task (e.g., intersect two interval files), quite sophisticated analyses can be conducted by combining multiple bedtools operations on the UNIX command line.
+#For more information on bedtools, please see http://bedtools.readthedocs.org/en/latest/ 
+#---------------------------------------------------------------------------------
+#module help python/2.7.7   
+#----------- Module Specific Help for 'python/2.7.7' ---------------
+#python 2.7.7: A general purpose, interpretive programming language.
+#For more information on python, please see
+#* Our help page: http://www.bu.edu/tech/support/research/software-and-programming/common-languages/python/
+#* Our tutorial page: http://www.bu.edu/tech/support/research/training-consulting/live-tutorials/#PROGRAMMING
+#* The vendor's website: http://www.python.org
+#---------------------------------------------------------------------------------
+#module help macs/2.1.0.20150731  
+#----------- Module Specific Help for 'macs/2.1.0.20150731' --------
+#macs 2.1.0.20150731 Model-based Analysis of ChIP-Seq (MACS)
+#With the improvement of sequencing techniques, chromatin immunoprecipitation followed by high throughput sequencing (ChIP-Seq) is getting popular to study genome-wide protein-DNA interactions. To address the lack of powerful ChIP-Seq analysis method, we present a novel algorithm, named Model-based Analysis of ChIP-Seq (MACS), for identifying transcript factor binding sites. MACS captures the influence of genome complexity to evaluate the significance of enriched ChIP regions, and MACS improves the spatial resolution of binding sites through combining the information of both sequencing tag position and orientation. MACS can be easily used for ChIP-Seq data alone, or with control sample with the increase of specificity.
+#For more information on macs, please see http://pypi.python.org/pypi/MAC2
+#---------------------------------------------------------------------------------
+##################################################################################
+#Need to copy input .bam file 
+#---------------------------------------------------------------------------------
+#Possible the StrgtPksRm.bam is problematic with MACS2:
+#cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/StrgtPksRm/${Sample_ID}'_StrgtPksRm.bam' .
+#Try the alignments.bam from Bowtie2
+#cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_alignments.bam' .
+#---------------------------------------------------------------------------------
+#Should use the *_sorted_mapped.bam from the *_BAM_Count job
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/StrgtPksRm/${Sample_ID}'_sorted_mapped.bam' .
+#Should use the *_fragments.bed.gz from the *_BAM_Count job
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/StrgtPksRm/${Sample_ID}'_fragments.bed.gz' .
+#---------------------------------------------------------------------------------
+#Copy peak width scripts to scratch dir
+JOB_SCRIPT_DIR=${SCRIPT_DIR}/Job_Scripts
+cp $JOB_SCRIPT_DIR/Peak_Width/Peak_Width* . 
+#Copy genomeIndex folder for BED -> BAM conversion
+cp -r $JOB_SCRIPT_DIR/genomeIndex .
+#Copy conversion folder for making bigBed of MACS2 peaks
+cp -r $JOB_SCRIPT_DIR/Convert_BED_to_WIG_7/BED_to_WIG .
+#---------------------------------------------------------------------------------
+#ENCODE has a list of blacklisted sites that should be removed:
+#https://sites.google.com/site/anshulkundaje/projects/blacklists
+#---------------------------------------------------------------------------------
+#Need to copy ENCODE_Blacklist regions:
+cp ${JOB_SCRIPT_DIR}/ENCODE_Blacklist/mm9-blacklist.bed.gz .
+gzip -d mm9-blacklist.bed.gz
+#Need to copy overlap scripts:
+cp ${JOB_SCRIPT_DIR}/Overlap_Script/overlap.* .
+#---------------------------------------------------------------------------------
+
+#Sample specific output dir:
+OUTPUT_DIR=${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/StrgtPksRm
+######################
+if [ ! -d $OUTPUT_DIR ]
+then
+mkdir $OUTPUT_DIR
+fi
+######################
+
+echo
+echo 'List files in scratch directory:'
+echo
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+#First need to convert BAM -> BED
+file_list=*.bam
+for file in $file_list;
+do
+echo $file
+name=${file%\_sorted_mapped.bam};
+echo $name
+#bamToBed -i $name'_StrgtPksRm.bam' > $name'_StrgtPksRm.bed'
+done
+
+#Get the name of the sample:
+Input_list=*.bam
+#For all BED files in the current dir:
+for file in $Input_list
+do
+file_name=${file%\.bam};
+echo
+echo 'Processing file: '$file
+echo
+#------------------------------------------------------------------------------
+##Need to get the read length from the input BED file to pipe into MACS2 command
+#Read_End=$(awk '{print $3}' $file_name'.bed' | head -1)
+#Read_Start=$(awk '{print $2}' $file_name'.bed' | head -1)
+#Read_Length=$(echo "$Read_End - $Read_Start" | bc)
+#echo 'Read_Length:'
+#echo $Read_Length
+##Need to convert BED -> BAM
+#time bedToBam -i $file_name'.bed' -g genomeIndex/mm9.chrom.sizes > $file_name'_MACS2_Input.bam'
+done
+
+echo "Print variables:"
+
+echo 'name:'
+echo $name
+
+echo 'file_name:'
+echo $file_name
+
+mkdir $name'_MACS2_output'
+
+echo
+echo 'Starting macs2 command'
+echo
+################################################################################
+#macs2 --version
+#macs2 2.1.0.20150731
+#------------------------------------------------------------------------------
+#macs2 [-h]
+#usage: macs2 [-h] [--version]
+#             
+#             {callpeak,bdgpeakcall,bdgbroadcall,bdgcmp,bdgopt,cmbreps,bdgdiff,filterdup,predictd,pileup,randsample,refinepeak}
+#             ...
+#macs2: error: argument subcommand_name: invalid choice: '[-h]' (choose from 'callpeak', 'bdgpeakcall', 'bdgbroadcall', 'bdgcmp', 'bdgopt', 'cmbreps', 'bdgdiff', 'filterdup', 'predictd', 'pileup', 'randsample', 'refinepeak')
+#------------------------------------------------------------------------------
+#macs2 callpeak [-h]
+#usage: macs2 callpeak [-h] -t TFILE [TFILE ...] [-c [CFILE [CFILE ...]]]
+#                      [-f {AUTO,BAM,SAM,BED,ELAND,ELANDMULTI,ELANDEXPORT,BOWTIE,BAMPE}]
+#                      [-g GSIZE] [--keep-dup KEEPDUPLICATES]
+#                      [--buffer-size BUFFER_SIZE] [--outdir OUTDIR] [-n NAME]
+#                      [-B] [--verbose VERBOSE] [--trackline] [--SPMR]
+#                      [-s TSIZE] [--bw BW] [-m MFOLD MFOLD] [--fix-bimodal]
+#                      [--nomodel] [--shift SHIFT] [--extsize EXTSIZE]
+#                      [-q QVALUE | -p PVALUE] [--to-large] [--ratio RATIO]
+#                      [--down-sample] [--seed SEED] [--nolambda]
+#                      [--slocal SMALLLOCAL] [--llocal LARGELOCAL] [--broad]
+#                      [--broad-cutoff BROADCUTOFF] [--cutoff-analysis]
+#                      [--call-summits] [--fe-cutoff FECUTOFF]
+#macs2 callpeak: error: argument -t/--treatment is required
+#If you want to see the description for each option:
+#macs2 callpeak -h
+################################################################################
+#optional arguments:
+#  -h, --help            show this help message and exit
+
+#Input files arguments:
+#  -t TFILE [TFILE ...], --treatment TFILE [TFILE ...]
+#                        ChIP-seq treatment file. If multiple files are given
+#                        as '-t A B C', then they will all be read and pooled
+#                        together. REQUIRED.
+#  -c [CFILE [CFILE ...]], --control [CFILE [CFILE ...]]
+#                        Control file. If multiple files are given as '-c A B
+#                        C', they will be pooled to estimate ChIP-seq
+#                        background noise.
+#  -f {AUTO,BAM,SAM,BED,ELAND,ELANDMULTI,ELANDEXPORT,BOWTIE,BAMPE}, --format {AUTO,BAM,SAM,BED,ELAND,ELANDMULTI,ELANDEXPORT,BOWTIE,BAMPE}
+#                        Format of tag file, "AUTO", "BED" or "ELAND" or
+#                        "ELANDMULTI" or "ELANDEXPORT" or "SAM" or "BAM" or
+#                        "BOWTIE" or "BAMPE". The default AUTO option will let
+#                        MACS decide which format the file is. Please check the
+#                        definition in README file if you choose
+#                        ELAND/ELANDMULTI/ELANDEXPORT/SAM/BAM/BOWTIE. DEFAULT:
+#                        "AUTO"
+#  -g GSIZE, --gsize GSIZE
+#                        Effective genome size. It can be 1.0e+9 or 1000000000,
+#                        or shortcuts:'hs' for human (2.7e9), 'mm' for mouse
+#                        (1.87e9), 'ce' for C. elegans (9e7) and 'dm' for
+#                        fruitfly (1.2e8), Default:hs
+#  --keep-dup KEEPDUPLICATES
+#                        It controls the MACS behavior towards duplicate tags
+#                        at the exact same location -- the same coordination
+#                        and the same strand. The 'auto' option makes MACS
+#                        calculate the maximum tags at the exact same location
+#                        based on binomal distribution using 1e-5 as pvalue
+#                        cutoff; and the 'all' option keeps every tags. If an
+#                        integer is given, at most this number of tags will be
+#                        kept at the same location. The default is to keep one
+#                        tag at the same location. Default: 1
+#  --buffer-size BUFFER_SIZE
+#                        Buffer size for incrementally increasing internal
+#                        array size to store reads alignment information. In
+#                        most cases, you don't have to change this parameter.
+#                        However, if there are large number of
+#                        chromosomes/contigs/scaffolds in your alignment, it's
+#                        recommended to specify a smaller buffer size in order
+#                        to decrease memory usage (but it will take longer time
+#                        to read alignment files). Minimum memory requested for
+#                        reading an alignment file is about # of CHROMOSOME *
+#                        BUFFER_SIZE * 2 Bytes. DEFAULT: 100000
+
+#Output arguments:
+#  --outdir OUTDIR       If specified all output files will be written to that
+#                        directory. Default: the current working directory
+#  -n NAME, --name NAME  Experiment name, which will be used to generate output
+#                        file names. DEFAULT: "NA"
+#  -B, --bdg             Whether or not to save extended fragment pileup, and
+#                        local lambda tracks (two files) at every bp into a
+#                        bedGraph file. DEFAULT: False
+#  --verbose VERBOSE     Set verbose level of runtime message. 0: only show
+#                        critical message, 1: show additional warning message,
+#                        2: show process information, 3: show debug messages.
+#                        DEFAULT:2
+#  --trackline           Tells MACS to include trackline with bedGraph files.
+#                        To include this trackline while displaying bedGraph at
+#                        UCSC genome browser, can show name and description of
+#                        the file as well. However my suggestion is to convert
+#                        bedGraph to bigWig, then show the smaller and faster
+#                        binary bigWig file at UCSC genome browser, as well as
+#                        downstream analysis. Require -B to be set. Default:
+#                        Not include trackline.
+#  --SPMR                If True, MACS will save signal per million reads for
+#                        fragment pileup profiles. Require -B to be set.
+#                        Default: False
+
+#Shifting model arguments:
+#  -s TSIZE, --tsize TSIZE
+#                        Tag size. This will overide the auto detected tag
+#                        size. DEFAULT: Not set
+#  --bw BW               Band width for picking regions to compute fragment
+#                        size. This value is only used while building the
+#                        shifting model. DEFAULT: 300
+#  -m MFOLD MFOLD, --mfold MFOLD MFOLD
+#                        Select the regions within MFOLD range of high-
+#                        confidence enrichment ratio against background to
+#                        build model. Fold-enrichment in regions must be lower
+#                        than upper limit, and higher than the lower limit. Use
+#                        as "-m 10 30". DEFAULT:5 50
+#  --fix-bimodal         Whether turn on the auto pair model process. If set,
+#                        when MACS failed to build paired model, it will use
+#                        the nomodel settings, the --exsize parameter to extend
+#                        each tags towards 3' direction. Not to use this
+#                        automate fixation is a default behavior now. DEFAULT:
+#                        False
+#  --nomodel             Whether or not to build the shifting model. If True,
+#                        MACS will not build model. by default it means
+#                        shifting size = 100, try to set extsize to change it.
+#                        DEFAULT: False
+#  --shift SHIFT         (NOT the legacy --shiftsize option!) The arbitrary
+#                        shift in bp. Use discretion while setting it other
+#                        than default value. When NOMODEL is set, MACS will use
+#                        this value to move cutting ends (5') towards 5'->3'
+#                        direction then apply EXTSIZE to extend them to
+#                        fragments. When this value is negative, ends will be
+#                        moved toward 3'->5' direction. Recommended to keep it
+#                        as default 0 for ChIP-Seq datasets, or -1 * half of
+#                        EXTSIZE together with EXTSIZE option for detecting
+#                        enriched cutting loci such as certain DNAseI-Seq
+#                        datasets. Note, you can't set values other than 0 if
+#                        format is BAMPE for paired-end data. DEFAULT: 0.
+#  --extsize EXTSIZE     The arbitrary extension size in bp. When nomodel is
+#                        true, MACS will use this value as fragment size to
+#                        extend each read towards 3' end, then pile them up.
+#                        It's exactly twice the number of obsolete SHIFTSIZE.
+#                        In previous language, each read is moved 5'->3'
+#                        direction to middle of fragment by 1/2 d, then
+#                        extended to both direction with 1/2 d. This is
+#                        equivalent to say each read is extended towards 5'->3'
+#                        into a d size fragment. DEFAULT: 200. EXTSIZE and
+#                        SHIFT can be combined when necessary. Check SHIFT
+#                        option.
+
+#Peak calling arguments:
+#  -q QVALUE, --qvalue QVALUE
+#                        Minimum FDR (q-value) cutoff for peak detection.
+#                        DEFAULT: 0.05. -q, and -p are mutually exclusive.
+#  -p PVALUE, --pvalue PVALUE
+#                        Pvalue cutoff for peak detection. DEFAULT: not set.
+#                        -q, and -p are mutually exclusive. If pvalue cutoff is
+#                        set, qvalue will not be calculated and reported as -1
+#                        in the final .xls file.
+#  --to-large            When set, scale the small sample up to the bigger
+#                        sample. By default, the bigger dataset will be scaled
+#                        down towards the smaller dataset, which will lead to
+#                        smaller p/qvalues and more specific results. Keep in
+#                        mind that scaling down will bring down background
+#                        noise more. DEFAULT: False
+#  --ratio RATIO         When set, use a custom scaling ratio of ChIP/control
+#                        (e.g. calculated using NCIS) for linear scaling.
+#                        DEFAULT: ingore
+#  --down-sample         When set, random sampling method will scale down the
+#                        bigger sample. By default, MACS uses linear scaling.
+#                        Warning: This option will make your result unstable
+#                        and irreproducible since each time, random reads would
+#                        be selected. Consider to use 'randsample' script
+#                        instead. <not implmented>If used together with --SPMR,
+#                        1 million unique reads will be randomly picked.</not
+#                        implemented> Caution: due to the implementation, the
+#                        final number of selected reads may not be as you
+#                        expected! DEFAULT: False
+#  --seed SEED           Set the random seed while down sampling data. Must be
+#                        a non-negative integer in order to be effective.
+#                        DEFAULT: not set
+#  --nolambda            If True, MACS will use fixed background lambda as
+#                        local lambda for every peak region. Normally, MACS
+#                        calculates a dynamic local lambda to reflect the local
+#                        bias due to potential chromatin structure.
+#  --slocal SMALLLOCAL   The small nearby region in basepairs to calculate
+#                        dynamic lambda. This is used to capture the bias near
+#                        the peak summit region. Invalid if there is no control
+#                        data. If you set this to 0, MACS will skip slocal
+#                        lambda calculation. *Note* that MACS will always
+#                        perform a d-size local lambda calculation. The final
+#                        local bias should be the maximum of the lambda value
+#                        from d, slocal, and llocal size windows. DEFAULT: 1000
+#  --llocal LARGELOCAL   The large nearby region in basepairs to calculate
+#                        dynamic lambda. This is used to capture the surround
+#                        bias. If you set this to 0, MACS will skip llocal
+#                        lambda calculation. *Note* that MACS will always
+#                        perform a d-size local lambda calculation. The final
+#                        local bias should be the maximum of the lambda value
+#                        from d, slocal, and llocal size windows. DEFAULT:
+#                        10000.
+#  --broad               If set, MACS will try to call broad peaks by linking
+#                        nearby highly enriched regions. The linking region is
+#                        controlled by another cutoff through --linking-cutoff.
+#                        The maximum linking region length is 4 times of d from
+#                        MACS. DEFAULT: False
+#  --broad-cutoff BROADCUTOFF
+#                        Cutoff for broad region. This option is not available
+#                        unless --broad is set. If -p is set, this is a pvalue
+#                        cutoff, otherwise, it's a qvalue cutoff. DEFAULT: 0.1
+#  --cutoff-analysis     While set, MACS2 will analyze number or total length
+#                        of peaks that can be called by different p-value
+#                        cutoff then output a summary table to help user decide
+#                        a better cutoff. The table will be saved in
+#                        NAME_cutoff_analysis.txt file. Note, minlen and maxgap
+#                        may affect the results. WARNING: May take ~30 folds
+#                        longer time to finish. DEFAULT: False
+
+#Post-processing options:
+#  --call-summits        If set, MACS will use a more sophisticated signal
+#                        processing approach to find subpeak summits in each
+#                        enriched peak region. DEFAULT: False
+#  --fe-cutoff FECUTOFF  When set, the value will be used to filter out peaks
+#                        with low fold-enrichment. Note, MACS2 use 1.0 as
+#                        pseudocount while calculating fold-enrichment.
+#                        DEFAULT: 1.0
+################################################################################
+#---------------------------------------------------------------------------------
+#Need to declare tag size otherwise get the following errors:
+#tag size is determined as 0 bps 
+#tag size = 0 
+#Using macs2 2.0.9 20111102 (tag:alpha)
+#With --broad option
+#The --broad option will produce regular *peaks.bed file with *broad_peaks.bed
+#macs2 -t $file -f BAM --broad -g mm -n $name'_MACS2_output'/$name'_MACS2' --keep-dup all -s 50
+#---------------------------------------------------------------------------------
+#Use default MACS2 parameters for ChIP-Seq data
+#-q QVALUE, --qvalue QVALUE
+#                        Minimum FDR (q-value) cutoff for peak detection.
+#                        DEFAULT: 0.05. -q, and -p are mutually exclusive.
+#qvalues are corrected pvalue, better to set a qvalue cutoff
+#Use qvalue cutoff 1.00e-25 (--qvalue 1.00e-25)
+#---------------------------------------------------------------------------------
+#Note:
+#Using the following option to declare this is paired-end data:
+#-f BAMPE
+#https://github.com/taoliu/MACS/
+#"5) A special mode will be triggered while format is specified as 'BAMPE'. In this way, MACS2 will process the BAM files as paired-end data. Instead of building bimodal distribution of plus and minus strand reads to predict fragment size, MACS2 now will use actual insert sizes of pairs of reads to build fragment pileup."
+#---------------------------------------------------------------------------------
+#Problem with macs2 2.1.0.20140616 with BAMPE:
+#https://groups.google.com/forum/#!searchin/macs-announcement/BAMPE/macs-announcement/wSseJgRfDCE/Rdg3rdRRVM0J
+#Need the newer version of macs2:
+#https://github.com/taoliu/MACS
+#---------------------------------------------------------------------------------
+#Need an if statement to check DHS_DATA
+if [ "${DHS_DATA}" == "NO" ] ;
+then
+#---------------------------------------------------------------------------------
+echo "Print the command:"
+echo "macs2 callpeak -t ${Sample_ID}'_sorted_mapped.bam' -f BAMPE -g mm -n $name'_MACS2_output'/$name'_MACS2' --keep-dup all"
+echo "Run the command:"
+macs2 callpeak -t ${Sample_ID}'_sorted_mapped.bam' -f BAMPE -g mm -n $name'_MACS2_output'/$name'_MACS2' --keep-dup all
+#---------------------------------------------------------------------------------
+fi
+#---------------------------------------------------------------------------------
+#Need an if statement to check DHS_DATA
+if [ "${DHS_DATA}" == "YES" ] ;
+then
+#---------------------------------------------------------------------------------
+echo "Print the command:"
+echo "macs2 callpeak -t ${Sample_ID}'_sorted_mapped.bam' -f BAMPE -g mm -n $name'_MACS2_output'/$name'_MACS2' --keep-dup all --nomodel --shift -100 --extsize 200"
+echo "Run the command:"
+macs2 callpeak -t ${Sample_ID}'_sorted_mapped.bam' -f BAMPE -g mm -n $name'_MACS2_output'/$name'_MACS2' --keep-dup all --nomodel --shift -100 --extsize 200
+#---------------------------------------------------------------------------------
+fi
+################################################################################
+echo
+echo 'Finished macs2 command'
+echo
+
+echo
+echo 'Making BED files of MACS2 output files'
+echo
+awk '{print $1"\t"$2"\t"$3"\t"$4}' $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak' > $name'_MACS2_output'/temp1.bed
+echo
+echo 'Filtering peaks:'
+echo 'Omit chrM'
+echo 'Omit random'
+echo 'Check that end position is greater than start position'
+echo 'Check that start position is greater than zero'
+echo 'Check that end position is greater than zero'
+echo
+awk 'BEGIN {OFS="\t"}
+{if ($1~/chr/ && $1 !="chrM" && $1 !~/random/ && $3>$2 && $2>0 && $3>0)
+print $0 > "'$name'_MACS2_output'/temp2.bed'";
+else 
+print $0 > "'$name'_MACS2_output'/Omitted_Peaks.bed'"}' $name'_MACS2_output'/temp1.bed 
+echo
+echo 'Done'
+echo
+echo
+echo 'Filtering peaks less than 100bp peak width from BED file'
+echo
+awk '{if($3-$2>99){print $0}}' $name'_MACS2_output'/temp2.bed > $name'_MACS2_output'/temp3.bed
+mv $name'_MACS2_output'/temp3.bed $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak.bed'
+rm $name'_MACS2_output'/temp*.bed
+echo
+echo 'Done'
+echo
+echo '#---------------------------------------------------------------------------------'
+echo 'BEFORE ENCODE_Blacklist filter:'
+echo '#---------------------------------------------------------------------------------'
+echo 'MACS2_peaks.narrowPeak.bed file line count:'
+Count1_Before=$(wc -l < $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak.bed')
+echo ${Count1_Before}
+#---------------------------------------------------------------------------------
+echo 'MACS2_peaks.narrowPeak file line count:'
+Count2_Before=$(wc -l < $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak')
+echo ${Count2_Before}
+#---------------------------------------------------------------------------------
+echo 'MACS2_summits.bed file line count:'
+Count3_Before=$(wc -l < $name'_MACS2_output'/$name'_MACS2_summits.bed')
+echo ${Count3_Before}
+#---------------------------------------------------------------------------------
+echo 'MACS2_peaks.xls file line count:'
+Count4_Before=$(wc -l < $name'_MACS2_output'/$name'_MACS2_peaks.xls')
+echo ${Count4_Before}
+echo '#---------------------------------------------------------------------------------'
+cd $name'_MACS2_output'
+#Copy files to $name'_MACS2_output' folder:
+cp ../mm9-blacklist.bed ./
+cp ../overlap.* ./
+echo 'Overlap BED file with mm9-blacklist.bed and filter out overlap'
+#Run overlap:
+./overlap.sh $name'_MACS2_peaks.narrowPeak.bed' mm9-blacklist.bed
+#We want the BED file regions that don't overlap the mm9-blacklist.bed: $name'_MACS2_peaks.narrowPeak''_unique.bed'
+#Copy this BED file from the *_Output folder, then rename to replace original BED file
+#cp *_Output/$name'_MACS2_peaks.narrowPeak''_unique.bed' ./$name'_MACS2_peaks.narrowPeak.bed'
+#Use intersectBed -v:
+intersectBed -v -a $name'_MACS2_peaks.narrowPeak.bed' -b mm9-blacklist.bed > $name'_MACS2_peaks.narrowPeak.bed'.filtered
+#Replace original file:
+mv $name'_MACS2_peaks.narrowPeak.bed'.filtered $name'_MACS2_peaks.narrowPeak.bed'
+#---------------------------------------------------------------------------------
+#Need to filter the $name'_MACS2_peaks.narrowPeak' file
+intersectBed -v -a $name'_MACS2_peaks.narrowPeak' -b mm9-blacklist.bed > $name'_MACS2_peaks.narrowPeak'.filtered
+#Replace original file:
+mv $name'_MACS2_peaks.narrowPeak'.filtered $name'_MACS2_peaks.narrowPeak'
+#---------------------------------------------------------------------------------
+#Need to filter the $name'_MACS2_summits.bed' file
+intersectBed -v -a $name'_MACS2_summits.bed' -b mm9-blacklist.bed > $name'_MACS2_summits.bed'.filtered
+#Replace original file:
+mv $name'_MACS2_summits.bed'.filtered $name'_MACS2_summits.bed'
+#---------------------------------------------------------------------------------
+#Need to filter the $name'_MACS2_peaks.xls' file
+#This file has a header section from line 1 to line 19
+#Rather than hard-code the line numbers, better to search for "#" in the first character
+#Use grep command to search for "#" at the start of each line:
+grep '^#' $name'_MACS2_peaks.xls' > Header1.txt
+#Want everything after the header section (doesn't match "#" at the start of each line)
+grep -v '^#' $name'_MACS2_peaks.xls' > Coordinates1.txt
+#Save 2nd section of header lines:
+head -2 Coordinates1.txt > Header2.txt
+#Get rid of first 2 header lines:
+awk 'FNR > 2' Coordinates1.txt > Coordinates2.txt
+#Filter:
+intersectBed -v -a Coordinates2.txt -b mm9-blacklist.bed > filtered.txt
+#Add header section back on:
+cat Header1.txt Header2.txt filtered.txt > $name'_MACS2_peaks.xls'.filtered
+#Replace original file:
+mv $name'_MACS2_peaks.xls'.filtered $name'_MACS2_peaks.xls'
+#Remove temp files:
+rm Header*.txt
+rm Coordinates*.txt
+rm filtered.txt
+#---------------------------------------------------------------------------------
+#Remove files from $name'_MACS2_output' folder:
+rm mm9-blacklist.bed
+rm overlap.*
+cd ..
+echo '#---------------------------------------------------------------------------------'
+echo 'AFTER ENCODE_Blacklist filter:'
+echo '#---------------------------------------------------------------------------------'
+echo 'MACS2_peaks.narrowPeak.bed file line count:'
+Count1_After=$(wc -l < $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak.bed')
+echo ${Count1_After}
+#Calculate the difference: (Count1_Before - Count1_After)
+Count1_Diff=$(echo "$Count1_Before - $Count1_After" | bc)
+echo 'Number of peaks lost:'
+echo ${Count1_Diff}
+#---------------------------------------------------------------------------------
+echo 'MACS2_peaks.narrowPeak file line count:'
+Count2_After=$(wc -l < $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak')
+echo ${Count2_After}
+#Calculate the difference: (Count2_Before - Count2_After)
+Count2_Diff=$(echo "$Count2_Before - $Count2_After" | bc)
+echo 'Number of peaks lost:'
+echo ${Count2_Diff}
+#---------------------------------------------------------------------------------
+echo 'MACS2_summits.bed file line count:'
+Count3_After=$(wc -l < $name'_MACS2_output'/$name'_MACS2_summits.bed')
+echo ${Count3_After}
+#Calculate the difference: (Count3_Before - Count3_After)
+Count3_Diff=$(echo "$Count3_Before - $Count3_After" | bc)
+echo 'Number of summits lost:'
+echo ${Count3_Diff}
+#---------------------------------------------------------------------------------
+echo 'MACS2_peaks.xls file line count:'
+Count4_After=$(wc -l < $name'_MACS2_output'/$name'_MACS2_peaks.xls')
+echo ${Count4_After}
+#Calculate the difference: (Count4_Before - Count4_After)
+Count4_Diff=$(echo "$Count4_Before - $Count4_After" | bc)
+echo 'Number of peaks lost:'
+echo ${Count4_Diff}
+echo '#---------------------------------------------------------------------------------'
+################################################################################
+#Combine MACS peak discovery with calculating the number of reads in these peaks
+################################################################################
+echo
+echo 'Starting coverageBed command'
+echo
+#######################################################
+#Count reads in regular peaks
+#######################################################
+#Need samtools command to use a BAM file with BEDTools:
+#---------------------------------------------------------------------------------
+#Note:
+#http://bedtools.readthedocs.org/en/latest/content/tools/coverage.html
+#The bedtools coverage tool computes both the depth and breadth of coverage of features in file B on the features in file A. For example, bedtools coverage can compute the coverage of sequence alignments (file B) across 1 kilobase (arbitrary) windows (file A) tiling a genome of interest. One advantage that bedtools coverage offers is that it not only counts the number of features that overlap an interval in file A, it also computes the fraction of bases in the interval in A that were overlapped by one or more features. Thus, bedtools coverage also computes the breadth of coverage observed for each interval in A.
+#---------------------------------------------------------------------------------
+#samtools view -b ${Sample_ID}'_sorted_mapped.bam' | coverageBed -a $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak.bed' -b stdin > $name'_read_MACS2_peaks.out1'
+#---------------------------------------------------------------------------------
+#Test the command:
+#http://bedtools.readthedocs.io/en/latest/content/advanced-usage.html
+#Take it a step further and require that coverage be from properly-paired reads.
+#For samtools options (-bf) makes sense:
+#https://www.biostars.org/p/7620/
+#samtools view -bf 0x2 ${Sample_ID}'_sorted_mapped.bam' | coverageBed -a $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak.bed' -b stdin > $name'_read_MACS2_peaks.out1'
+#---------------------------------------------------------------------------------
+#To get the number of fragments (not reads) in peaks:
+#BEDTools by default will count reads (not fragments)
+#The way to correct this:
+#https://groups.google.com/forum/#!msg/bedtools-discuss/kulRA_7Ybow/4Be6otCybZgJ
+#BAM -> bedpe format -> extract fragment coordinates -> then do coverageBED
+#Reads need to be sorted by name otherwise get an error:
+#"marked as paired, but it's mate does not occur next to it in your BAM file. Skipping."
+#---------------------------------------------------------------------------------
+#https://www.biostars.org/p/149119/
+## Sort by read name
+#Leave out the output file extension for samtools sort
+#echo 'Starting Sort by read name'
+#samtools sort -n ${Sample_ID}'_sorted_mapped.bam' ${Sample_ID}'_sorted_byname'
+#echo 'Ended Sort by read name'
+#---------------------------------------------------------------------------------
+## Update/fix SAM flags
+#echo 'Starting Update/fix SAM flags'
+#samtools fixmate ${Sample_ID}'_sorted_byname.bam' ${Sample_ID}'_fixed.bam'
+#echo 'Ended Update/fix SAM flags'
+##---------------------------------------------------------------------------------
+## Sort by coordinates
+#echo 'Starting Sort by coordinates'
+#samtools sort ${Sample_ID}'_fixed.bam' ${Sample_ID}'_fixed.sorted'
+#echo 'Ended Sort by coordinates'
+#---------------------------------------------------------------------------------
+# coverageBed for properly-paired reads
+echo 'Starting coverageBed for properly-paired reads'
+coverageBed -a $name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak.bed' -b ${Sample_ID}'_fragments.bed.gz' > $name'_read_MACS2_peaks.out1'
+echo 'Ended coverageBed for properly-paired reads'
+#---------------------------------------------------------------------------------
+cp $name'_read_MACS2_peaks.out1' $name'_MACS2_output'
+echo
+echo 'Finished coverageBed command'
+echo
+################################################################################
+#Combine MACS peak discovery with peak width distribution summary
+################################################################################
+echo
+echo 'Starting Peak_Width.sh'
+echo
+./Peak_Width.sh ./$name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak.bed'
+#Copy output text file to output dir
+cp *_Stats.txt $name'_MACS2_output'
+echo
+echo 'Finished Peak_Width.sh'
+echo
+################################################################################
+#Combine MACS peak discovery with BED -> BigBed conversion
+################################################################################
+echo
+echo 'Starting BED_to_WIG'
+echo
+#Copy BED file to conversion folder:
+cp ./$name'_MACS2_output'/$name'_MACS2_peaks.narrowPeak.bed' ./BED_to_WIG/Input_files/
+cd BED_to_WIG/
+./BED_to_WIG.sh
+mv temp_bb/*.bb ../$name'_MACS2_output'
+cd ..
+echo
+echo 'Finished BED_to_WIG'
+echo
+echo
+echo 'Copy macs2 output folder to input dir'
+echo
+########################################################
+#Remove output dir from storage (running multiple times)
+if [ -d $OUTPUT_DIR/$name'_MACS2_output' ]; then
+rm -r $OUTPUT_DIR/$name'_MACS2_output';
+fi
+########################################################
+cp -r $name'_MACS2_output' $OUTPUT_DIR
+echo "cp -r $name'_MACS2_output' $OUTPUT_DIR"
+########################################################
+
+echo
+echo "List files in scratch"
+echo
+ls -alh
+
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"

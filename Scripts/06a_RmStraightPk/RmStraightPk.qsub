@@ -1,0 +1,231 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 03.13.17
+#This script is called by RmStraightPk.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+set -eu
+# Run on the current working directory
+#$ -cwd
+#$ -pe omp 16
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+#$ -l scratch_free=200G
+##################################################################################
+#Initialize variables from BAM_Count.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 5 ] ; then
+      echo "Need 5 arguments for the qsub command:"
+      echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} RmStraightPk.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${SCRIPT_DIR} ${OUTPUT_DIR}"
+      exit 0
+fi
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+SCRIPT_DIR=$4
+OUTPUT_DIR=$5
+
+#http://www.ibm.com/developerworks/library/l-bash-parameters/
+#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
+
+#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
+#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Sample_ID:"
+echo ${Sample_ID}
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "SCRIPT_DIR"
+echo ${SCRIPT_DIR}
+echo "OUTPUT_DIR"
+echo ${OUTPUT_DIR}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#Search for latest program installed:
+#module avail -t 2>&1 | grep -i boost
+module load boost
+#module avail -t 2>&1 | grep -i samtools
+module load samtools/0.1.19
+#module avail -t 2>&1 | grep -i bedtools
+module load bedtools/2.27.1
+#--------------------------------------
+#module help boost/1.54.0
+#----------- Module Specific Help for 'boost/1.54.0' ---------------
+#Boost provides free peer-reviewed portable C++ source libraries.
+#http://www.boost.org/
+
+#module help samtools/samtools-0.1.19_gnu446
+#----------- Module Specific Help for 'samtools/samtools-0.1.19_gnu446' ---------------------------
+#sets the environment for samtools (0.1.19) built using GNU Compilers
+#SAM (Sequence Alignment/Map) format is a generic format for storing
+#large nucleotide sequence alignments. SAM Tools provide various utilities
+#for manipulating alignments in the SAM format, including sorting, merging,
+#indexing and generating alignments in a per-position format.
+#http://samtools.sourceforge.net/
+
+#module help  bedtools/2.22.0
+#----------- Module Specific Help for 'bedtools/2.22.0' ------------
+#bedtools 2.22.0 A powerful toolset for genome arithmetic
+#Collectively, the bedtools utilities are a swiss-army knife of tools for a wide-range of genomics analysis tasks. The most widely-used tools enable genome arithmetic: that is, set theory on the genome. For example, bedtools allows one to intersect, merge, count, complement, and shuffle genomic intervals from multiple files in widely-used genomic file formats such as BAM, BED, GFF/GTF, VCF. While each individual tool is designed to do a relatively simple task (e.g., intersect two interval files), quite sophisticated analyses can be conducted by combining multiple bedtools operations on the UNIX command line.
+#For more information on bedtools, please see http://bedtools.readthedocs.org/en/latest/ 
+#--------------------------------------
+
+#Copy BAM file to scratch:
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_sorted_mapped'.bam .
+#Copy scripts need for StrgtPksRm
+cp ${SCRIPT_DIR}/Job_Scripts/remove_straight_peaks.sh .
+cp ${SCRIPT_DIR}/Job_Scripts/remove_straight_peaks.py .
+#Copy over mm9.chrom.sizes for BED -> BAM conversion
+cp -r ${SCRIPT_DIR}/Job_Scripts/genomeIndex .
+
+#Assign OUTPUT_DIR variable:
+#OUTPUT_DIR
+#Set up in RemoveStraightPeak_Parallel.sh
+#OUTPUT_DIR already contains the summary from each sample's job
+OUTPUT_FILE=$OUTPUT_DIR/${Sample_ID}'_StrgtPksRead_count.txt'
+######################
+if [ -f $OUTPUT_FILE ]
+then 
+rm $OUTPUT_FILE
+else
+touch $OUTPUT_FILE
+fi
+######################
+STORAGE_DIR=${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/StrgtPksRm
+######################
+if [ ! -d $STORAGE_DIR ]
+then
+mkdir $STORAGE_DIR
+fi
+######################
+
+echo
+echo 'List files in scratch directory:'
+echo
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+#First need to convert BAM -> BED
+bamToBed -i ${Sample_ID}'_sorted_mapped.bam' > ${Sample_ID}'.bed'
+#Execute RemoveStraightPeak.sh (also executes RemoveStraightPeak.pl)
+time ./remove_straight_peaks.sh
+#Will generate a *_StrgtPksRm.bed file
+#Need the line count of the *_StrgtPksRm.bed file
+StrgtPksReads=$(wc -l < ${Sample_ID}'_StrgtPksRm.bed')
+#Also want the line count of the input BED file (identical to the total number of mapped reads)
+TotalMappedReads=$(wc -l < ${Sample_ID}'_sort.bed')
+#####################################################
+#Arithmetic to get percentage and number of straight peak reads
+Number_StrgtPksReads=$(echo "$TotalMappedReads - $StrgtPksReads" | bc)
+StrgtPksReads_Ratio=$(echo "scale=4;$Number_StrgtPksReads/$TotalMappedReads" | bc)
+#####################################################
+echo ${Sample_ID} $'\t' $TotalMappedReads $'\t' $StrgtPksReads $'\t' $StrgtPksReads_Ratio $'\t' $Number_StrgtPksReads >> $OUTPUT_FILE
+sed 's/\t$//' ${Sample_ID}'_StrgtPks.bed' > ${Sample_ID}'_StrgtPks_tab.bed'
+sed 's/\t$//' ${Sample_ID}'_StrgtPksRm.bed' > ${Sample_ID}'_StrgtPksRm_tab.bed'
+
+cp ${Sample_ID}'_StrgtPks_tab.bed' $STORAGE_DIR
+
+cp -r $STORAGE_DIR/${Sample_ID}'_StrgtPks_tab.bed' .
+
+#KK addition Need to intersect the BAM files using strghtpeaks bed file
+samtools view ${Sample_ID}'_sorted_mapped.bam'| head
+echo "bam view II"
+samtools view ${Sample_ID}'_sorted_mapped'.bam | head
+bedtools intersect -abam ${Sample_ID}'_sorted_mapped.bam' -b ${Sample_ID}'_StrgtPks_tab.bed' -v > ${Sample_ID}'_filtered_StrgtPks.bam'
+cp ${Sample_ID}'_filtered_StrgtPks.bam' $STORAGE_DIR
+cp -r $STORAGE_DIR/${Sample_ID}'_filtered_StrgtPks.bam' .
+samtools index ${Sample_ID}'_filtered_StrgtPks.bam'
+samtools sort ${Sample_ID}'_filtered_StrgtPks.bam' ${Sample_ID}'_filtered_StrgtPks_sorted'
+#Generate BAM index (Need to visulaize BAM file of reads in UCSC browser)
+cp ${Sample_ID}'_filtered_StrgtPks_sorted.bam' $STORAGE_DIR
+cp -r $STORAGE_DIR/${Sample_ID}'_filtered_StrgtPks_sorted.bam' .
+samtools index ${Sample_ID}'_filtered_StrgtPks_sorted.bam'
+
+#Need to convert BED -> BAM
+#bedToBam -i ${Sample_ID}'_StrgtPksRm.bed' -g genomeIndex/mm9.chrom.sizes > ${Sample_ID}'_StrgtPksRm.bam'
+#####################################################
+#Upon generating the *_StrgtPksRm.bam file, the file size is less than 100MB while the input *_sorted_mapped.bam file is around 1000MB (1GB)
+#Want to count the reads in the *_StrgtPksRm.bam file
+#samtools flagstat ${Sample_ID}'_StrgtPksRm.bam' > 'flagstat_'${Sample_ID}'_StrgtPksRm.txt'
+#####################################################
+#Need to sort BAM file before generating index
+#Sort BAM file
+#samtools sort ${Sample_ID}'_StrgtPksRm.bam' ${Sample_ID}'_StrgtPksRm_sorted'
+#Replace the *_StrgtPksRm_sorted with *_StrgtPksRm
+#mv ${Sample_ID}'_StrgtPksRm_sorted.bam' ${Sample_ID}'_StrgtPksRm.bam'
+#Generate BAM index (Need to visulaize BAM file of reads in UCSC browser)
+#samtools index ${Sample_ID}'_StrgtPksRm.bam'
+#####################################################
+#Copy files back to storage
+## Kritika addition
+cp ${Sample_ID}'_StrgtPksRm_tab.bed' $STORAGE_DIR
+#cp ${Sample_ID}'_StrgtPks.bed' $STORAGE_DIR
+cp ${Sample_ID}'_StrgtPks_tab.bed' $STORAGE_DIR
+#cp ${Sample_ID}'_filtered_StrgtPks_sorted.bam' $STORAGE_DIR
+
+
+######
+#cp ${Sample_ID}'_StrgtPksRm.bam' $STORAGE_DIR
+#cp 'flagstat_'${Sample_ID}'_StrgtPksRm.txt' $STORAGE_DIR
+cp *.bam.bai $STORAGE_DIR
+
+echo
+echo "List files in scratch"
+echo
+ls -alh
+
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"

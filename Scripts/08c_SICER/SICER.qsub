@@ -1,0 +1,635 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 04.24.17
+#This script is called by Run_Jobs.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+# Run on the current working directory
+#$ -cwd
+
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+
+##################################################################################
+#Initialize variables from Run_Jobs.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 5 ] ; then
+    echo "Need 5 arguments for the qsub command:"
+    echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} macs2.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${DHS_DATA} ${SCRIPT_DIR}"
+    exit 0
+fi
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+DHS_DATA=$4
+SCRIPT_DIR=$5
+
+#http://www.ibm.com/developerworks/library/l-bash-parameters/
+#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
+
+#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
+#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Sample_ID:"
+echo ${Sample_ID}
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "DHS_DATA:"
+echo ${DHS_DATA}
+echo "SCRIPT_DIR"
+echo ${SCRIPT_DIR}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#Search for latest program installed:
+#module avail -t 2>&1 | grep -i sicer
+#sicer/1.1
+module load sicer/1.1 
+#module avail -t 2>&1 | grep -i bedtools
+module load bedtools/2.27.1
+module load R/3.6.2
+module load python2
+#--------------------------------------
+##################################################################################
+#---------------------------------------------------------------------------------
+#----------- Module Specific Help for 'sicer/1.1' ------------------
+#sicer 1.1 A clustering approach for identification of enriched domains from histone modification ChIP-Seq data
+#"A clustering approach for identification of enriched domains from histone modification
+#ChIP-Seq data" Chongzhi Zang, Dustin E. Schones, Chen Zeng, Kairong Cui, Keji Zhao, and
+#Weiqun Peng , Bioinformatics 25, 1952 - 1958 (2009)
+#For more information on sicer, please see http://home.gwu.edu/~wpeng/Software.htm
+#---------------------------------------------------------------------------------
+#module help bedtools/2.26.0
+#----------- Module Specific Help for 'bedtools/2.26.0' ------------
+#bedtools 2.26.0 a powerful toolset for genome arithmetic
+#Collectively, the bedtools utilities are a swiss-army knife of tools for a wide-range of genomics analysis tasks. The most widely-used tools enable genome arithmetic: that is, set theory on the genome. For example, bedtools allows one to intersect, merge, count, complement, and shuffle genomic intervals from multiple files in widely-used genomic file formats such as BAM, BED, GFF/GTF, VCF. While each individual tool is designed to do a relatively simple task (e.g., intersect two interval files), quite sophisticated analyses can be conducted by combining multiple bedtools operations on the UNIX command line.
+#For more information on bedtools, please see http://bedtools.readthedocs.io/en/latest/
+#---------------------------------------------------------------------------------
+##################################################################################
+#Need to copy input file 
+#For PE data we have a choice between (1) BAM file of reads or (2) BED file of fragments
+#For macs2 
+#	We have the option to specify the BAM file is PE data (-f BAMPE)
+#	For correct fragment in peak counting, I used the BED file of fragments
+#For hiddenDomains
+#	I don't see a corresponding option like (-f BAMPE)
+#	It can accept BAM files as input, but I don't know if it will treat it as PE data
+#	For this program, I should use the BED file of fragments for both:
+#		a. peak discovery and fragment in peak counting
+#	Note: use the (-B) option to specify input files are in BED format
+#For SICER
+#	The input file must be a BED file
+#	For this program, I will use the BED file of fragments
+#	Turns out that SICER is looking for strand information for each read
+#	Strand information does not exist for the fragment coordinates
+#	I'll have to convert BAM to BED for SICER
+#	For this program:
+#		a. Use BAM -> BED file for peak calling
+#		b. BED file of fragments for fragment in peak counting
+#---------------------------------------------------------------------------------
+#Note: a ChromInfo.txt is required for the (-g) option
+#Search for "chromInfo.txt.gz" at the following link
+#http://hgdownload.cse.ucsc.edu/goldenpath/mm9/database/
+#I already have a version of this file in the $JOB_SCRIPT_DIR/genomeIndex
+#I confirmed both text files have the same chromomsome lengths
+#For SICER:
+#	The user specifies the "species"
+#---------------------------------------------------------------------------------
+
+#---------------------------------------------------------------------------------
+#Should use the *_fragments.bed.gz from the *_BAM_Count job
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_fragments.bed.gz' .
+#Should use the *_sorted_mapped.bam from the *_BAM_Count job
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_sorted_mapped.bam' .
+#---------------------------------------------------------------------------------
+#Copy peak width scripts to scratch dir
+JOB_SCRIPT_DIR=${SCRIPT_DIR}/Job_Scripts
+cp $JOB_SCRIPT_DIR/Peak_Width/Peak_Width* . 
+#Copy conversion folder for making bigBed of called peaks
+cp -r $JOB_SCRIPT_DIR/Convert_BED_to_WIG_7/BED_to_WIG .
+#---------------------------------------------------------------------------------
+#ENCODE has a list of blacklisted sites that should be removed:
+#https://sites.google.com/site/anshulkundaje/projects/blacklists
+#---------------------------------------------------------------------------------
+#Need to copy ENCODE_Blacklist regions:
+cp ${JOB_SCRIPT_DIR}/ENCODE_Blacklist/mm9-blacklist.bed.gz .
+gzip -d mm9-blacklist.bed.gz
+#Need to copy overlap scripts:
+cp ${JOB_SCRIPT_DIR}/Overlap_Script/overlap.* .
+#---------------------------------------------------------------------------------
+
+#Sample specific output dir:
+OUTPUT_DIR=${Dataset_DIR}/${Sample_ID}/fastq/bowtie2
+######################
+if [ ! -d $OUTPUT_DIR ]
+then
+    mkdir $OUTPUT_DIR
+fi
+######################
+
+echo
+echo 'List files in scratch directory:'
+echo
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+#---------------------------------------------------------------------------------
+#bedtools bamtobed -h
+#Tool:    bedtools bamtobed (aka bamToBed)
+#Version: v2.26.0
+#Summary: Converts BAM alignments to BED6 or BEDPE format.
+#Usage:   bedtools bamtobed [OPTIONS] -i <bam> 
+#Options: 
+#	-bedpe	Write BEDPE format.
+#		- Requires BAM to be grouped or sorted by query.
+#	-mate1	When writing BEDPE (-bedpe) format, 
+#		always report mate one as the first BEDPE "block".
+#	-bed12	Write "blocked" BED format (aka "BED12"). Forces -split.
+#		http://genome-test.cse.ucsc.edu/FAQ/FAQformat#format1
+#	-split	Report "split" BAM alignments as separate BED entries.
+#		Splits only on N CIGAR operations.
+#	-splitD	Split alignments based on N and D CIGAR operators.
+#		Forces -split.
+#	-ed	Use BAM edit distance (NM tag) for BED score.
+#		- Default for BED is to use mapping quality.
+#		- Default for BEDPE is to use the minimum of
+#		  the two mapping qualities for the pair.
+#		- When -ed is used with -bedpe, the total edit
+#		  distance from the two mates is reported.
+#	-tag	Use other NUMERIC BAM alignment tag for BED score.
+#		- Default for BED is to use mapping quality.
+#		  Disallowed with BEDPE output.
+#	-color	An R,G,B string for the color used with BED12 format.
+#		Default is (255,0,0).
+#	-cigar	Add the CIGAR string to the BED entry as a 7th column.
+#---------------------------------------------------------------------------------
+
+
+#Get the name of the sample:
+file_list=*_sorted_mapped.bam
+for file in $file_list;
+do
+    echo ${file}
+    Sample_Name=${file%\_sorted_mapped.bam};
+    echo ${Sample_Name}
+    echo 'Processing file: '${file}
+    echo 'Run bedtools bamtobed'
+    bedtools bamtobed -i ${file} > ${Sample_Name}'.bed'
+    echo 'Line count of BED file:'
+    wc -l ${Sample_Name}'.bed'
+    echo 'Head of BED file...'
+    head ${Sample_Name}'.bed'
+done
+
+echo "Print variables:"
+
+echo 'Sample_Name:'
+echo ${Sample_Name}
+
+#Job_Output_DIR=${Sample_Name}'_hiddenDomains_output'
+#Job_Output_DIR=${Sample_Name}'_hiddenDomains_output_MIN_POS_0.9'
+#Job_Output_DIR=${Sample_Name}'_hiddenDomains_output_BIN_WIDTH_2K'
+Job_Output_DIR=${Sample_Name}'_SICER_output'
+mkdir ${Job_Output_DIR}
+
+echo
+echo 'Starting SICER command'
+echo
+################################################################################
+#sh SICER-rb.sh
+#Usage: SICER-rb.sh [InputDir] [bed file] [OutputDir] [species] [redundancy threshold] [window size (bp)] [fragment size] [effective genome fraction] [gap size (bp)] [E-value]
+#---------------------------------------------------------------------------------
+#For details description of the algorithm, please see
+#“A clustering approach for identification of enriched domains from histone modification
+#ChIP-Seq data” Chongzhi Zang, Dustin E. Schones, Chen Zeng, Kairong Cui, Keji Zhao, and
+#Weiqun Peng , Bioinformatics 25, 1952 - 1958 (2009)
+#If you use SICER to analyze your data in a published work, please cite the above
+#paper in the main text of your publication.
+#For questions about usage, please sign up, check and post at google group SICER
+#users. For suggestions and comments, please email chongzhizang@gmail.com and
+#wpeng@gwu.edu
+#---------------------------------------------------------------------------------
+#3.1: Running SICER with a control library: SICER.sh
+#Most of the important parameters are on command line. There are 11 command line
+#parameters.
+#sh DIR/SICER.sh ["InputDir"] ["bed file"] ["control file"] ["OutputDir"] ["Species"] ["redundancy
+#threshold"] ["window size (bp)"] ["fragment size"] ["effective genome fraction"] ["gap size (bp)"]
+#["FDR"]
+#Here the DIR shall be replaced by the directory of SICER.sh in practice.
+#Meanings of the parameters that are not self-explanatory:
+#Species: allowed species and genome versions are listed in GenomeData.py. You
+#can add your own species and/or genome versions and relevant data there.
+#Redundancy Threshold: The number of copies of identical reads allowed in a
+#library.
+#Window size: resolution of SICER algorithm. For histone modifications, one can use
+#200 bp
+#Fragment size: is for determination of the amount of shift from the beginning of a
+#read to the center of the DNA fragment represented by the read.
+#FRAGMENT_SIZE=150 means the shift is 75.
+#Effective genome fraction: Effective Genome as fraction of the genome size. It
+#depends on read length.
+#Gap size: needs to be multiples of window size. Namely if the window size is 200,
+#the gap size should be 0, 200, 400, 600, ....
+#---------------------------------------------------------------------------------
+#3.2: Running SICER without a control library: SICER-rb.sh
+#There are 10 command line parameters:
+#sh DIR/SICER-rb.sh ["InputDir"] ["bed file"] ["OutputDir"] ["species"] ["redundancy threshold"]
+#["window size (bp)"] ["fragment size"] ["effective genome fraction"] ["gap size (bp)"] ["E-value"]
+#Here the DIR shall be replaced by the directory of SICER-rb.sh in practice.
+#An example of shell script for running SICER-rb.sh, run_SICER-rb.sh, with a redundancy
+#threshold of 1, a window size of 200bp, a gap size of 400bp and E-value=100 can be found
+#under ex/.
+#There are a number of output files.
+#test-1-removed.bed: redundancy-removed test bed file
+#test-W200.graph: summary graph file for test-1-removed.bed with window size 200 in
+#bedGraph format.
+#test-W200-normalized.wig: the above file normalized by library size per million and
+#converted into wig format. This file can be uploaded to the UCSC genome browser
+#test-W200-G400-E100.scoreisland: delineation of significant islands controlled by E-
+#value of 100, in “chrom
+#start end
+#score” format
+#test-W200-G400-E100-islandfiltered.bed: library of raw redundancy-removed reads that
+#are on significant islands.
+#test-W200-G400-E100-islandfiltered-normalized.wig: wig file for the island-filtered
+#redundancy-removed reads. This file can be uploaded to the UCSC genome browser
+#and be compared with the track for test-W200-normalized.wig for visual examination of
+#choices of parameters and SICER performance.
+#Of all these files, the test-W200-G400-E100.scoreisland and test-W200-G400-E100-
+#islandfiltered.bed are most important for further analysis. The first one contains the delineation
+#of each significant island. The second one contains the redundancy-removed raw reads filtered
+#by significant islands. In addition, the two wig files shall be used for visual examination of the
+#raw and processed data on genome browser.
+#Note:
+#The choice of window size and gap size has a large effect on outcome. In general, the
+#broader the domain, the bigger the gap should be. For histone modifications H3K4me3,
+#W=200 and (g=1 wondow) are suggested. For H3K27me3, W=200 and (g = 3 windows)
+#are suggested for first try. If even bigger gap size is found to work better, you might
+#also want to try increasing the window size (eg, window size = 1K, and gap size = 3
+#windows)
+#E-value is not p-value. Suggestion for first try on histone modification data: E-
+#value=100. If you find ~10000 islands using this evalue, an empirical estimate of FDR
+#is 1E-2.
+#Additional details and adjustable parameters can be found in the SICER-rb.sh script,
+#which allow further tailoring for advanced uses.
+#---------------------------------------------------------------------------------
+################################################################################
+#---------------------------------------------------------------------------------
+#For DHS data, we would want to use the same set of options for any other broad mark
+#No need to check if the data is DHS or not DHS
+#For macs2 we wanted to control the model building behavior
+#For hiddenDomains there's no corresponding model building step
+#For SICER there's no corresponding model building step
+#---------------------------------------------------------------------------------
+#I want to run SICER with the same parameters that Aarathi used:
+#Sugathan A, Waxman DJ. Genome-wide analysis of chromatin states reveals distinct mechanisms of sex-dependent gene regulation in male and female mouse liver. Mol. Cell. Biol. 2013;33:3594–610. 
+#"For K27me3, a window size of 400 bp was used, and a gap size of 2,400 was chosen as most appropriate (see Fig. S12 in the supplemental material). The same parameters were used for K9me3."
+#---------------------------------------------------------------------------------
+InputDir=$(pwd)
+bed_file=${Sample_Name}'.bed'
+OutputDir=${Job_Output_DIR}
+species=mm9
+redundancy_threshold=1
+window_size=400
+fragment_size=200
+effective_genome_fraction=0.80
+gap_size=2400
+E_value=100
+#---------------------------------------------------------------------------------
+
+echo "Print the command:"
+echo "sh SICER-rb.sh ${InputDir} ${bed_file} ${OutputDir} ${species} ${redundancy_threshold} ${window_size} ${fragment_size} ${effective_genome_fraction} ${gap_size} ${E_value}"
+echo "Run the command:"
+sh SICER-rb.sh ${InputDir} ${bed_file} ${OutputDir} ${species} ${redundancy_threshold} ${window_size} ${fragment_size} ${effective_genome_fraction} ${gap_size} ${E_value}
+#---------------------------------------------------------------------------------
+################################################################################
+echo
+echo 'Finished SICER command'
+echo
+
+#---------------------------------------------------------------------------------
+#Understanding the output files (described above):
+#1. test-1-removed.bed: redundancy-removed test bed file
+#2. test-W200.graph: summary graph file for test-1-removed.bed with window size 200 in bedGraph format.
+#3. test-W200-normalized.wig: the above file normalized by library size per million and converted into wig format. This file can be uploaded to the UCSC genome browser
+#4. test-W200-G400-E100.scoreisland: delineation of significant islands controlled by E-
+#value of 100, in “chrom start end score” format
+#5. test-W200-G400-E100-islandfiltered.bed: library of raw redundancy-removed reads that are on significant islands.
+#6. test-W200-G400-E100-islandfiltered-normalized.wig: wig file for the island-filtered redundancy-removed reads. This file can be uploaded to the UCSC genome browser and be compared with the track for test-W200-normalized.wig for visual examination of choices of parameters and SICER performance.
+#Of all these files, the 
+#	(1) test-W200-G400-E100.scoreisland (delineation of each significant island)
+#	(2) test-W200-G400-E100-islandfiltered.bed (redundancy-removed raw reads filtered by significant islands)
+#are most important for further analysis. The first one contains the delineation
+#---------------------------------------------------------------------------------
+#Based on the above description, it makes sense to focus on the *.scoreisland as the output file of called peaks
+#---------------------------------------------------------------------------------
+#Sample of the output files:
+#==> G116_M1-1-removed.bed <==
+#chr1	3000207	3000257	HWI-D00311:82:C72YLANXX:8:1203:8854:18443/2	42	+
+#chr1	3000220	3000270	HWI-D00311:82:C72YLANXX:8:1114:13671:33530/2	40	+
+#chr1	3000257	3000307	HWI-D00311:82:C72YLANXX:8:2101:2708:30700/1	42	+
+#chr1	3000628	3000678	HWI-D00311:82:C72YLANXX:8:1202:8635:30041/2	42	+
+#chr1	3000802	3000852	HWI-D00311:82:C72YLANXX:8:1113:18934:83829/2	42	+
+#chr1	3000949	3000999	HWI-D00311:82:C72YLANXX:8:1301:3507:58837/1	42	+
+#chr1	3000954	3001004	HWI-D00311:82:C72YLANXX:8:2115:8172:62235/2	42	+
+#chr1	3001086	3001136	HWI-D00311:82:C72YLANXX:8:2202:18156:76829/1	42	+
+#chr1	3001206	3001256	HWI-D00311:82:C72YLANXX:8:1112:9488:14198/2	42	+
+#chr1	3001213	3001263	HWI-D00311:82:C72YLANXX:8:1302:19579:58770/2	42	+
+
+#==> G116_M1-W400-G2400-E100-islandfiltered-normalized.wig <==
+#track type=wiggle_0 name=G116_M1-islandfiltered
+#variableStep chrom=chr1 span=400
+#3195201	2.60086
+#3195601	0.371551
+#3196001	0.371551
+#3196401	0.743102
+#3196801	1.11465
+#3197201	1.85776
+#3197601	1.11465
+#3198001	1.85776
+
+#==> G116_M1-W400-G2400-E100-islandfiltered.bed <==
+#chr1	3195121	3195171	HWI-D00311:82:C72YLANXX:8:1313:7622:68886/2	42	+
+#chr1	3195140	3195190	HWI-D00311:82:C72YLANXX:8:2109:17482:87440/1	42	+
+#chr1	3195207	3195257	HWI-D00311:82:C72YLANXX:8:1101:16611:95260/2	42	+
+#chr1	3195252	3195302	HWI-D00311:82:C72YLANXX:8:1304:14951:52358/2	42	+
+#chr1	3195313	3195363	HWI-D00311:82:C72YLANXX:8:2115:2694:68593/1	42	+
+#chr1	3195413	3195463	HWI-D00311:82:C72YLANXX:8:1206:8159:94933/1	42	+
+#chr1	3195529	3195579	HWI-D00311:82:C72YLANXX:8:2316:7508:63184/1	42	+
+#chr1	3195534	3195584	HWI-D00311:82:C72YLANXX:8:1206:19899:83357/2	42	+
+#chr1	3196237	3196287	HWI-D00311:82:C72YLANXX:8:1106:8359:56275/2	42	+
+#chr1	3196317	3196367	HWI-D00311:82:C72YLANXX:8:1214:10724:82495/2	42	+
+
+#==> G116_M1-W400-G2400-E100.scoreisland <==
+#chrY	1263600	1268399	137.087821068
+#chrY	1310800	1317199	98.7283514405
+#chrY	1788000	1793999	2886.5871438
+#chrY	2601600	2604799	85.7813180653
+#chrY	2777200	2797599	14080.8756349
+#chrY	2847200	2902799	30709.1384801
+#chrX	53240000	53241599	108.131068292
+#chrX	55163200	55175599	89.8197006733
+#chrX	55261200	55287999	153.336932905
+#chrX	73844000	73844399	313.82971088
+
+#==> G116_M1-W400-normalized.wig <==
+#track type=wiggle_0 name=G116_M1
+#variableStep chrom=chr1 span=400
+#3000001	0.248572
+#3000401	0.0414287
+#3000801	0.33143
+#3001201	0.290001
+#3001601	0.165715
+#3002001	0.0414287
+#3002401	0.207143
+#3002801	0.124286
+
+#==> G116_M1-W400.graph <==
+#chr1	3000000	3000399	6
+#chr1	3000400	3000799	1
+#chr1	3000800	3001199	8
+#chr1	3001200	3001599	7
+#chr1	3001600	3001999	4
+#chr1	3002000	3002399	1
+#chr1	3002400	3002799	5
+#chr1	3002800	3003199	3
+#chr1	3003200	3003599	2
+#chr1	3003600	3003999	10
+#---------------------------------------------------------------------------------
+#From the sample data above, we can only filter the *.scoreisland file
+################################################################################
+#Doing several operations in the ${Job_Output_DIR}
+cd ${Job_Output_DIR}
+#General way to refer to the main output file
+ls -la
+tree
+
+Peaks_Called_File=$(ls *.scoreisland)
+echo 'Peaks_Called_File: '${Peaks_Called_File}
+echo
+echo 'Making BED files of SICER output files'
+echo
+awk '{print $1"\t"$2"\t"$3"\t"$4}' ${Peaks_Called_File} > temp1.bed
+echo
+echo 'Filtering peaks:'
+echo 'Omit chrM'
+echo 'Omit random'
+echo 'Check that end position is greater than start position'
+echo 'Check that start position is greater than zero'
+echo 'Check that end position is greater than zero'
+echo
+awk 'BEGIN {OFS="\t"}
+{if ($1~/chr/ && $1 !="chrM" && $1 !~/random/ && $3>$2 && $2>0 && $3>0)
+print $0 > "'temp2.bed'";
+else 
+print $0 > "'Omitted_Peaks.bed'"}' temp1.bed 
+echo
+echo 'Done'
+echo
+echo
+echo 'Filtering peaks less than 100bp peak width from BED file'
+echo
+awk '{if($3-$2>99){print $0}}' temp2.bed > temp3.bed
+mv temp3.bed ${Peaks_Called_File}
+rm temp*.bed
+echo
+echo 'Done'
+echo
+#################################################################################
+echo '#---------------------------------------------------------------------------------'
+echo 'BEFORE ENCODE_Blacklist filter:'
+echo '#---------------------------------------------------------------------------------'
+echo 'Peaks_Called_File file line count:'
+Count1_Before=$(wc -l < ${Peaks_Called_File})
+echo ${Count1_Before}
+echo '#---------------------------------------------------------------------------------'
+#Copy files to ${Job_Output_DIR} folder:
+cp ../mm9-blacklist.bed ./
+cp ../overlap.* ./
+echo 'Overlap BED file with mm9-blacklist.bed and filter out overlap'
+#Run overlap:
+./overlap.sh ${Peaks_Called_File} mm9-blacklist.bed
+#We want the BED file regions that don't overlap the mm9-blacklist.bed: ${Peaks_Called_File}'_unique.bed'
+#Copy this BED file from the *_Output folder, then rename to replace original BED file
+#cp *_Output/${Peaks_Called_File}'_unique.bed' ./${Sample_Name}'_MACS2_peaks.narrowPeak.bed'
+#Use intersectBed -v:
+intersectBed -v -a ${Peaks_Called_File} -b mm9-blacklist.bed > ${Peaks_Called_File}.filtered
+#Replace original file:
+mv ${Peaks_Called_File}.filtered ${Peaks_Called_File}
+#---------------------------------------------------------------------------------
+#Remove files from ${Job_Output_DIR} folder:
+rm mm9-blacklist.bed
+rm overlap.*
+#################################################################################
+echo '#---------------------------------------------------------------------------------'
+echo 'AFTER ENCODE_Blacklist filter:'
+echo '#---------------------------------------------------------------------------------'
+echo 'Peaks_Called_File file line count:'
+Count1_After=$(wc -l < ${Peaks_Called_File})
+echo ${Count1_After}
+#Calculate the difference: (Count1_Before - Count1_After)
+Count1_Diff=$(echo "$Count1_Before - $Count1_After" | bc)
+echo 'Number of peaks lost:'
+echo ${Count1_Diff}
+echo '#---------------------------------------------------------------------------------'
+################################################################################
+#Combine MACS peak discovery with calculating the number of reads in these peaks
+################################################################################
+echo
+echo 'Starting coverageBed command'
+echo
+#######################################################
+#Count reads in regular peaks
+#######################################################
+#Need samtools command to use a BAM file with BEDTools:
+#---------------------------------------------------------------------------------
+#Note:
+#http://bedtools.readthedocs.org/en/latest/content/tools/coverage.html
+#The bedtools coverage tool computes both the depth and breadth of coverage of features in file B on the features in file A. For example, bedtools coverage can compute the coverage of sequence alignments (file B) across 1 kilobase (arbitrary) windows (file A) tiling a genome of interest. One advantage that bedtools coverage offers is that it not only counts the number of features that overlap an interval in file A, it also computes the fraction of bases in the interval in A that were overlapped by one or more features. Thus, bedtools coverage also computes the breadth of coverage observed for each interval in A.
+#---------------------------------------------------------------------------------
+#To get the number of fragments (not reads) in peaks:
+#BEDTools by default will count reads (not fragments)
+#The way to correct this:
+#https://groups.google.com/forum/#!msg/bedtools-discuss/kulRA_7Ybow/4Be6otCybZgJ
+#BAM -> bedpe format -> extract fragment coordinates -> then do coverageBED
+#Reads need to be sorted by name otherwise get an error:
+#"marked as paired, but it's mate does not occur next to it in your BAM file. Skipping."
+#---------------------------------------------------------------------------------
+cd ${TMPDIR}
+#Get the name of the sample:
+file_list=*.bed.gz
+for file in $file_list;
+do
+    echo ${file}
+    Sample_Name=${file%\_fragments.bed.gz};
+    echo ${Sample_Name}
+    echo 'Processing file: '${file}
+    echo 'Line count of fragments BED file:'
+    zcat ${file} | wc -l 
+    echo 'Starting unzipping the BED file...'
+    time gzip -d ${file}
+    echo 'Done unzipping the BED file...'
+done
+#---------------------------------------------------------------------------------
+# coverageBed for properly-paired reads
+echo 'Starting coverageBed for properly-paired reads'
+coverageBed -a ${Job_Output_DIR}/${Peaks_Called_File} -b ${Sample_ID}'_fragments.bed' > ${Sample_Name}'_read_SICER.out1'
+echo 'Ended coverageBed for properly-paired reads'
+#---------------------------------------------------------------------------------
+cp ${Sample_Name}'_read_SICER.out1' ${Job_Output_DIR}
+echo
+echo 'Finished coverageBed command'
+echo
+################################################################################
+#Combine MACS peak discovery with peak width distribution summary
+################################################################################
+echo
+echo 'Starting Peak_Width.sh'
+echo
+
+./Peak_Width.sh ./${Job_Output_DIR}/${Peaks_Called_File}
+#Copy output text file to output dir
+cp *_Stats.txt ${Job_Output_DIR}
+echo
+echo 'Finished Peak_Width.sh'
+echo
+################################################################################
+#Combine MACS peak discovery with BED -> BigBed conversion
+################################################################################
+echo
+echo 'Starting BED_to_WIG'
+echo
+#Copy BED file to conversion folder:
+#Note: the BED_to_WIG.sh looks for a .bed extension
+cp ./${Job_Output_DIR}/${Peaks_Called_File} ./BED_to_WIG/Input_files/${Peaks_Called_File}'.bed'
+cd BED_to_WIG/
+./BED_to_WIG.sh
+mv temp_bb/*.bb ../${Job_Output_DIR}
+cd ..
+echo
+echo 'Finished BED_to_WIG'
+echo
+
+echo
+echo 'Copy SICER output folder to input dir'
+echo
+########################################################
+#For using a "clean" folder for job output files
+#Before using a remove command, I need to check that the variable exists:
+#http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+#https://www.cyberciti.biz/faq/unix-linux-bash-script-check-if-variable-is-empty/
+#Remove output dir from storage (running multiple times)
+if [ -d $OUTPUT_DIR/${Job_Output_DIR} ]; then
+    #If Job_Output_DIR is blank, it will delete the contents of the bowtie2 folder
+    #Better practice to check if ${Job_Output_DIR} is defined:
+    if [ ! -z ${Job_Output_DIR+x} ]; 
+    then 
+	echo "Job_Output_DIR is set to '${Job_Output_DIR}'";
+	rm -r $OUTPUT_DIR/${Job_Output_DIR}/*;
+    else echo "WARNING: Job_Output_DIR is unset.  Set value for the Job_Output_DIR."; 
+    fi
+fi
+########################################################
+cp -r ${Job_Output_DIR} $OUTPUT_DIR
+echo "cp -r ${Job_Output_DIR} $OUTPUT_DIR"
+########################################################
+
+echo
+echo "List files in scratch"
+echo
+ls -alh
+
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"

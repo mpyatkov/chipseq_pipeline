@@ -1,0 +1,529 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 12.14.16
+#This script is called by Run_Jobs.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+set -eu
+# Run on the current working directory
+#$ -cwd
+
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+
+##################################################################################
+#Initialize variables from Run_Jobs.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 5 ] ; then
+      echo "Need 5 arguments for the qsub command:"
+      echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} Trim_Galore.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${SCRIPT_DIR} ${READ_LEN}"
+      exit 0
+fi
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+SCRIPT_DIR=$4
+READ_LEN=$5
+
+#http://www.ibm.com/developerworks/library/l-bash-parameters/
+#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
+
+#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
+#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Sample_ID:"
+echo ${Sample_ID}
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "SCRIPT_DIR:"
+echo ${SCRIPT_DIR}
+echo "READ_LEN:"
+echo ${READ_LEN}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+#Seems like cutadapt/trim_galore automatically uses multiple cores
+#If only using 1 core you'll get emails from the SCC process reaper
+#You can use option "-pe omp N", where N is the number of cores ( number of course on our system can be any integer between 1 and 16):
+#$ -pe omp 16
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "Parameter for multiple cores : $NSLOTS"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#Search for latest program installed:
+#module avail -t 2>&1 | grep -i trim
+#Directly calling executable
+#Still need to call:
+#cutadapt
+#module load python2/2.7.16
+#Charles A Jahnke was able to install trim_galore on the SCC:
+module load cutadapt/1.18
+module load fastqc
+module load trimgalore/0.4.4
+##################################################################################
+#module help python
+#----------- Module Specific Help for 'python/2.7.11' --------------
+#python 2.7.11 A general purpose, interpretive programming language.
+#For more information on python, please see
+#* Our help page: http://www.bu.edu/tech/support/research/software-and-programming/common-languages/python/
+#* Our tutorial page: http://www.bu.edu/tech/support/research/training-consulting/live-tutorials/#PROGRAMMING
+#* The vendor's website: http://www.python.org
+#For more information on python, please see https://www.python.org
+#-----------------------------------------------------
+#module help fastqc
+#----------- Module Specific Help for 'fastqc/0.11.5' --------------
+#fastqc 0.11.5: A quality control tool for high throughput sequence data.
+#FastQC aims to provide a simple way to do some quality control checks on raw sequence data coming from high throughput sequencing pipelines. It provides a modular set of analyses which you can use to give a quick impression of whether your data has any problems of which you should be aware before doing any further analysis.
+#For more information on fastqc, please see http://www.bioinformatics.babraham.ac.uk/projects/fastqc
+#-----------------------------------------------------
+#module help trim_galore
+#----------- Module Specific Help for 'trim_galore/0.4.2' ----------
+#trim_galore 0.4.2: A wrapper around Cutadapt and FastQC to consistently apply adapter and quality trimming to FastQ files, with extra functionality for RRBS data.
+
+#Trim Galore! is a wrapper script to automate quality and adapter trimming as well as quality control, with some added functionality to remove biased methylation positions for RRBS sequence files (for directional, non-directional (or paired-end) sequencing). It's main features are:
+
+
+# - For adapter trimming, Trim Galore! uses the first 13 bp of Illumina standard adapters ('AGATCGGAAGAGC') by default (suitable for both ends of paired-end libraries), but accepts other adapter sequence, too
+# - For MspI-digested RRBS libraries, Trim Galore! performs quality and adapter trimming in two subsequent steps. This allows it to remove 2 additional bases that contain a cytosine which was artificially introduced in the end-repair step during the library preparation
+# - For any kind of FastQ file other than MspI-digested RRBS, Trim Galore! can perform single-pass adapter- and quality trimming
+# - The Phred quality of basecalls and the stringency for adapter removal can be specified individually
+# - Trim Galore! can remove sequences if they become too short during the trimming process. For paired-end files Trim Galore! removes entire sequence pairs if one (or both) of the two reads became shorter than the set length cutoff. Reads of a read-pair that are longer than a given threshold but for which the partner read has become too short can optionally be written out to single-end files. This ensures that the information of a read pair is not lost entirely if only one read is of good quality
+# - Trim Galore! can trim paired-end files by 1 additional bp from the 3' end of all reads to avoid problems with invalid alignments with Bowtie 1
+# - Trim Galore! accepts and produces standard or gzip compressed FastQ files
+# - FastQC can be run on the resulting output files once trimming has completed (optional)
+
+
+#For more information on trim_galore, please see http://www.bioinformatics.babraham.ac.uk/projects/trim_galore/
+##################################################################################
+
+#-----------------------------------------------------
+# copy user input data files to scratch
+#Copy over the *R1*.fastq.gz file(s):
+cp ${Dataset_DIR}/${Sample_ID}/fastq/*R1*.fastq.gz .
+#Copy over the *R2*.fastq.gz file(s):
+cp ${Dataset_DIR}/${Sample_ID}/fastq/*R2*.fastq.gz .
+#-----------------------------------------------------
+
+#We need a comma separated list for the *_1 ("left") set of files:
+READ1_FILE_NAME=*R1*.fastq.gz	
+for i in ${READ1_FILE_NAME}; 
+	do
+	READ1=`echo $READ1$i,`; 
+done
+Left_List=${READ1%?}
+echo
+echo "Here is the Left_List:"
+echo ${Left_List}
+echo
+#-----------------------------------------------------
+#We need a comma separated list for the **_2 ("right") set of files:
+READ2_FILE_NAME=*R2*.fastq.gz	
+for i in ${READ2_FILE_NAME}; 
+	do
+	READ2=`echo $READ2$i,`; 
+done
+Right_List=${READ2%?}
+echo
+echo "Here is the Right_List:"
+echo ${Right_List}
+echo
+#-----------------------------------------------------
+#Make output dir:
+STORAGE_DIR=${Dataset_DIR}/${Sample_ID}/fastq
+OUTPUT_DIR=$TMPDIR/trim_galore_output
+##############################
+if [[ ! -d $OUTPUT_DIR ]]; 
+then
+mkdir $OUTPUT_DIR
+fi
+##############################
+########################################################
+#Remove output dir from storage (running multiple times)
+if [ -d ${STORAGE_DIR}/trim_galore_output ]; 
+then
+rm -r ${STORAGE_DIR}/trim_galore_output
+fi
+########################################################
+echo
+echo 'List files in the scratch directory:'
+echo
+
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+#echo
+#echo 'Unzip files:'
+#echo
+
+#time gzip -d *.gz
+
+#echo
+#echo 'Finished unzipping'
+#echo
+
+# run my commands.
+echo
+echo 'Starting trim_galore'
+echo
+#trim_galore is a wrapper for cutadapt:
+#http://www.bioinformatics.babraham.ac.uk/projects/trim_galore/
+##################################################################################
+#cutadapt --help
+#cutadapt version 1.10
+#Copyright (C) 2010-2016 Marcel Martin <marcel.martin@scilifelab.se>
+
+#cutadapt removes adapter sequences from high-throughput sequencing reads.
+
+#Usage:
+#    cutadapt -a ADAPTER [options] [-o output.fastq] input.fastq
+
+#For paired-end reads:
+#    cutadapt -a ADAPT1 -A ADAPT2 [options] -o out1.fastq -p out2.fastq in1.fastq in2.fastq
+
+#Replace "ADAPTER" with the actual sequence of your 3' adapter. IUPAC wildcard
+#characters are supported. The reverse complement is *not* automatically
+#searched. All reads from input.fastq will be written to output.fastq with the
+#adapter sequence removed. Adapter matching is error-tolerant. Multiple adapter
+#sequences can be given (use further -a options), but only the best-matching
+#adapter will be removed.
+
+#Input may also be in FASTA format. Compressed input and output is supported and
+#auto-detected from the file name (.gz, .xz, .bz2). Use the file name '-' for
+#standard input/output. Without the -o option, output is sent to standard output.
+
+#Citation:
+
+#Marcel Martin. Cutadapt removes adapter sequences from high-throughput
+#sequencing reads. EMBnet.Journal, 17(1):10-12, May 2011.
+#http://dx.doi.org/10.14806/ej.17.1.200
+
+#Use "cutadapt --help" to see all command-line options.
+#See http://cutadapt.readthedocs.org/ for full documentation.
+
+#Options:
+#  --version             show program's version number and exit
+#  -h, --help            show this help message and exit
+#  --debug               Print debugging information.
+#  -f FORMAT, --format=FORMAT
+#                        Input file format; can be either 'fasta', 'fastq' or
+#                        'sra-fastq'. Ignored when reading csfasta/qual files.
+#                        Default: auto-detect from file name extension.
+
+#  Finding adapters::
+#    Parameters -a, -g, -b specify adapters to be removed from each read
+#    (or from the first read in a pair if data is paired). If specified
+#    multiple times, only the best matching adapter is trimmed (but see the
+#    --times option). When the special notation 'file:FILE' is used,
+#    adapter sequences are read from the given FASTA file.
+##################################################################################
+#./trim_galore --help
+
+# USAGE:
+
+#trim_galore [options] <filename(s)>
+
+
+#-h/--help               Print this help message and exits.
+
+#-v/--version            Print the version information and exits.
+
+#-q/--quality <INT>      Trim low-quality ends from reads in addition to adapter removal. For
+#                        RRBS samples, quality trimming will be performed first, and adapter
+#                        trimming is carried in a second round. Other files are quality and adapter
+#                        trimmed in a single pass. The algorithm is the same as the one used by BWA
+#                        (Subtract INT from all qualities; compute partial sums from all indices
+#                        to the end of the sequence; cut sequence at the index at which the sum is
+#                        minimal). Default Phred score: 20.
+
+#--phred33               Instructs Cutadapt to use ASCII+33 quality scores as Phred scores
+#                        (Sanger/Illumina 1.9+ encoding) for quality trimming. Default: ON.
+
+#--phred64               Instructs Cutadapt to use ASCII+64 quality scores as Phred scores
+#                        (Illumina 1.5 encoding) for quality trimming.
+
+#--fastqc                Run FastQC in the default mode on the FastQ file once trimming is complete.
+
+#--fastqc_args "<ARGS>"  Passes extra arguments to FastQC. If more than one argument is to be passed
+#                        to FastQC they must be in the form "arg1 arg2 etc.". An example would be:
+#                        --fastqc_args "--nogroup --outdir /home/". Passing extra arguments will
+#                        automatically invoke FastQC, so --fastqc does not have to be specified
+#                        separately.
+
+#-a/--adapter <STRING>   Adapter sequence to be trimmed. If not specified explicitly, Trim Galore will
+#                        try to auto-detect whether the Illumina universal, Nextera transposase or Illumina
+#                        small RNA adapter sequence was used. Also see '--illumina', '--nextera' and
+#                        '--small_rna'. If no adapter can be detected within the first 1 million sequences
+#                        of the first file specified Trim Galore defaults to '--illumina'.
+
+#-a2/--adapter2 <STRING> Optional adapter sequence to be trimmed off read 2 of paired-end files. This
+#                        option requires '--paired' to be specified as well. If the libraries to be trimmed
+#                        are smallRNA then a2 will be set to the Illumina small RNA 5' adapter automatically
+#                        (GATCGTCGGACT).
+
+#--illumina              Adapter sequence to be trimmed is the first 13bp of the Illumina universal adapter
+#                        'AGATCGGAAGAGC' instead of the default auto-detection of adapter sequence.
+
+#--nextera               Adapter sequence to be trimmed is the first 12bp of the Nextera adapter
+#                        'CTGTCTCTTATA' instead of the default auto-detection of adapter sequence.
+
+#--small_rna             Adapter sequence to be trimmed is the first 12bp of the Illumina Small RNA 3' Adapter
+#                        'TGGAATTCTCGG' instead of the default auto-detection of adapter sequence. Selecting
+#                        to trim smallRNA adapters will also lower the --length value to 18bp. If the smallRNA
+#                        libraries are paired-end then a2 will be set to the Illumina small RNA 5' adapter
+#                        automatically (GATCGTCGGACT) unless -a 2 had been defined explicitly.
+
+#--max_length <INT>      Discard reads that are longer than <INT> bp after trimming. This is only advised for
+#                        smallRNA sequencing to remove non-small RNA sequences.
+
+
+#--stringency <INT>      Overlap with adapter sequence required to trim a sequence. Defaults to a
+#                        very stringent setting of 1, i.e. even a single bp of overlapping sequence
+#                        will be trimmed off from the 3' end of any read.
+
+#-e <ERROR RATE>         Maximum allowed error rate (no. of errors divided by the length of the matching
+#                        region) (default: 0.1)
+
+#--gzip                  Compress the output file with GZIP. If the input files are GZIP-compressed
+#                        the output files will automatically be GZIP compressed as well. As of v0.2.8 the
+#                        compression will take place on the fly.
+
+#--dont_gzip             Output files won't be compressed with GZIP. This option overrides --gzip.
+
+#--length <INT>          Discard reads that became shorter than length INT because of either
+#                        quality or adapter trimming. A value of '0' effectively disables
+#                        this behaviour. Default: 20 bp.
+
+#                        For paired-end files, both reads of a read-pair need to be longer than
+#                        <INT> bp to be printed out to validated paired-end files (see option --paired).
+#                        If only one read became too short there is the possibility of keeping such
+#                        unpaired single-end reads (see --retain_unpaired). Default pair-cutoff: 20 bp.
+
+#--max_n COUNT           The total number of Ns (as integer) a read may contain before it will be removed altogether.
+#                        In a paired-end setting, either read exceeding this limit will result in the entire
+#                        pair being removed from the trimmed output files.
+
+#--trim-n                Removes Ns from either side of the read. This option does currently not work in RRBS mode.
+
+#-o/--output_dir <DIR>   If specified all output will be written to this directory instead of the current
+#                        directory.
+
+#--no_report_file        If specified no report file will be generated.
+
+#--suppress_warn         If specified any output to STDOUT or STDERR will be suppressed.
+
+#--clip_R1 <int>         Instructs Trim Galore to remove <int> bp from the 5' end of read 1 (or single-end
+#                        reads). This may be useful if the qualities were very poor, or if there is some
+#                        sort of unwanted bias at the 5' end. Default: OFF.
+
+#--clip_R2 <int>         Instructs Trim Galore to remove <int> bp from the 5' end of read 2 (paired-end reads
+#                        only). This may be useful if the qualities were very poor, or if there is some sort
+#                        of unwanted bias at the 5' end. For paired-end BS-Seq, it is recommended to remove
+#                        the first few bp because the end-repair reaction may introduce a bias towards low
+#                        methylation. Please refer to the M-bias plot section in the Bismark User Guide for
+#                        some examples. Default: OFF.
+
+#--three_prime_clip_R1 <int>     Instructs Trim Galore to remove <int> bp from the 3' end of read 1 (or single-end
+#                        reads) AFTER adapter/quality trimming has been performed. This may remove some unwanted
+#                        bias from the 3' end that is not directly related to adapter sequence or basecall quality.
+#                        Default: OFF.
+
+#--three_prime_clip_R2 <int>     Instructs Trim Galore to remove <int> bp from the 3' end of read 2 AFTER
+#                        adapter/quality trimming has been performed. This may remove some unwanted bias from
+#                        the 3' end that is not directly related to adapter sequence or basecall quality.
+#                        Default: OFF.
+
+#--path_to_cutadapt </path/to/cutadapt>     You may use this option to specify a path to the Cutadapt executable,
+#                        e.g. /my/home/cutadapt-1.7.1/bin/cutadapt. Else it is assumed that Cutadapt is in
+#                        the PATH.
+
+
+#RRBS-specific options (MspI digested material):
+
+#--rrbs                  Specifies that the input file was an MspI digested RRBS sample (recognition
+#                        site: CCGG). Sequences which were adapter-trimmed will have a further 2 bp
+#                        removed from their 3' end. This is to avoid that the filled-in C close to the
+#                        second MspI site in a sequence is used for methylation calls. Sequences which
+#                        were merely trimmed because of poor quality will not be shortened further.
+#                        This option is not recommended for users of the NuGEN ovation RRBS System 1-16
+#                        kit (see below).
+
+#--non_directional       Selecting this option for non-directional RRBS libraries will screen
+#                        quality-trimmed sequences for 'CAA' or 'CGA' at the start of the read
+#                        and, if found, removes the first two basepairs. Like with the option
+#                        '--rrbs' this avoids using cytosine positions that were filled-in
+#                        during the end-repair step. '--non_directional' requires '--rrbs' to
+#                        be specified as well.
+
+#--keep                  Keep the quality trimmed intermediate file. Default: off, which means
+#                        the temporary file is being deleted after adapter trimming. Only has
+#                        an effect for RRBS samples since other FastQ files are not trimmed
+#                        for poor qualities separately.
+
+
+#Note for RRBS using the NuGEN Ovation RRBS System 1-16 kit:
+
+#Owing to the fact that the NuGEN Ovation kit attaches a varying number of nucleotides (0-3) after each MspI
+#site Trim Galore should be run WITHOUT the option --rrbs. This trimming is accomplished in a subsequent 
+#diversity trimming step afterwards (see their manual).
+
+
+
+#Note for RRBS using MseI:
+
+#If your DNA material was digested with MseI (recognition motif: TTAA) instead of MspI it is NOT necessary
+#to specify --rrbs or --non_directional since virtually all reads should start with the sequence
+#'TAA', and this holds true for both directional and non-directional libraries. As the end-repair of 'TAA'
+#restricted sites does not involve any cytosines it does not need to be treated especially. Instead, simply
+#run Trim Galore! in the standard (i.e. non-RRBS) mode.
+
+
+
+
+#Paired-end specific options:
+
+#--paired                This option performs length trimming of quality/adapter/RRBS trimmed reads for
+#                        paired-end files. To pass the validation test, both sequences of a sequence pair
+#                        are required to have a certain minimum length which is governed by the option
+#                        --length (see above). If only one read passes this length threshold the
+#                        other read can be rescued (see option --retain_unpaired). Using this option lets
+#                        you discard too short read pairs without disturbing the sequence-by-sequence order
+#                        of FastQ files which is required by many aligners.
+
+#                        Trim Galore! expects paired-end files to be supplied in a pairwise fashion, e.g.
+#                        file1_1.fq file1_2.fq SRR2_1.fq.gz SRR2_2.fq.gz ... .
+
+#-t/--trim1              Trims 1 bp off every read from its 3' end. This may be needed for FastQ files that
+#                        are to be aligned as paired-end data with Bowtie. This is because Bowtie (1) regards
+#                        alignments like this:
+
+#                          R1 --------------------------->     or this:    ----------------------->  R1
+#                          R2 <---------------------------                       <-----------------  R2
+
+#                        as invalid (whenever a start/end coordinate is contained within the other read).
+
+#--retain_unpaired       If only one of the two paired-end reads became too short, the longer
+#                        read will be written to either '.unpaired_1.fq' or '.unpaired_2.fq'
+#                        output files. The length cutoff for unpaired single-end reads is
+#                        governed by the parameters -r1/--length_1 and -r2/--length_2. Default: OFF.
+
+#-r1/--length_1 <INT>    Unpaired single-end read length cutoff needed for read 1 to be written to
+#                        '.unpaired_1.fq' output file. These reads may be mapped in single-end mode.
+#                        Default: 35 bp.
+
+#-r2/--length_2 <INT>    Unpaired single-end read length cutoff needed for read 2 to be written to
+#                        '.unpaired_2.fq' output file. These reads may be mapped in single-end mode.
+#                        Default: 35 bp.
+
+
+#Last modified on 03 August 2016.
+#---------------------------------------------------------------------------------
+#from:	Christina Pengying Hao <phao@bu.edu>
+#to:	Andy Rampersaud <aramp10@bu.edu>
+#date:	Mon, Dec 12, 2016 at 3:05 PM
+#subject:	Re: Sample_G143-M7_M14-Index-8
+#Hi Andy, 
+
+#No I didn't parse any chromatin marks data from the small RNA file.  The small RNAs have insert size of less than 40bp, so I just extracted that portion for my analysis.  If you are only looking at chip seq signals, those reads shouldn't interfere.  The reason is because those small RNAs are so small (~21bp) that for each of the 50 bp reads, half of the sequence will be from adaptor sequences, so unless you trim away the adaptors (which you don't do for chip seq), those reads will not map.  So I don't think you need to do anything.  Let me know if you have any questions.
+#---------------------------------------------------------------------------------
+#Useful suggestion for removing reads with adaptor sequences:
+#https://www.biostars.org/p/68396/
+#Could run trim_galore with the length option equal to the read length
+#This way any reads with adaptor sequence will be trimmed to some length less than the original read length, in which case, reads shorter than the original read length will be filtered out
+#Based on the above I should use the read length (50bp) for the length option
+#---------------------------------------------------------------------------------
+#--stringency <INT>
+#Information about this option:
+#http://www.bioinformatics.babraham.ac.uk/projects/trim_galore/trim_galore_User_Guide_v0.3.7.pdf
+#Since we know the adaptor to be trimmed:
+#Trim Galore identified the same adaptor sequence (AGATCGGAAGAGC)
+#The stringency should be the length of the adaptor sequence: 13
+#---------------------------------------------------------------------------------
+#--quality <INT>
+#Don't want to trim based on quality score:
+#--quality 0
+#---------------------------------------------------------------------------------
+#By default, it makes sense to not keep the FASTQ file
+#Do not use the (--keep) option
+#However, if the user needs to have the FASTQ file, then use the (--keep) option
+#---------------------------------------------------------------------------------
+#Print the command:
+echo "trim_galore --quality 0 --stringency 13 --length ${READ_LEN} --paired ${Left_List} ${Right_List} --output_dir ${OUTPUT_DIR}"
+#Run the command:
+trim_galore --quality 0 --stringency 13 --length ${READ_LEN} --paired ${Left_List} ${Right_List} --output_dir ${OUTPUT_DIR}
+#---------------------------------------------------------------------------------
+echo
+echo 'Finished trim_galore command'
+echo
+
+#Even with omitting the (--keep) option, still need to remove the FASTQ file:
+rm ${OUTPUT_DIR}/*.fastq.gz
+
+echo
+echo 'Copy OUTPUT_DIR file to storage'
+echo
+cp -r ${OUTPUT_DIR} ${STORAGE_DIR}
+
+echo
+echo "List files in scratch"
+echo
+ls -alh
+
+cd ${OUTPUT_DIR}
+
+echo
+echo "List files in OUTPUT_DIR"
+echo
+ls -alh
+
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"

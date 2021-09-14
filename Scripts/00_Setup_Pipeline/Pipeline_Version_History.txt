@@ -1,0 +1,402 @@
+##################################################################################
+#Andy Rampersaud, 08.04.17
+#This Pipeline_Version_History.txt file is used to record different versions of the pipeline
+#Continuous pipeline updates either major or minor should be recorded
+#The pipeline version numbers start with v2.0
+#Version numbers follow the nomenclature decribed here:
+#https://en.wikipedia.org/wiki/Software_versioning
+#major.minor[.build[.revision]]
+##################################################################################
+#---------------------------------------------------------------------------------
+Version:
+v2.0
+Updates:
+	Initial pipeline release
+	Previous versions of the pipeline were available and under development
+#---------------------------------------------------------------------------------
+Version:
+v2.0.1
+Updates:
+	Moved Sample_Labels.txt to 00_Setup_Pipeline folder
+	Sample_Labels.txt now has a color column (no need for Sample_Labels_Color.txt)
+	README file updates:
+	1. Explain file organization
+	2. Instructions for copy commands without typing password every time
+	3. Instructions for using tmux terminal
+	02_Review_Pipeline_Parameters.sh updates:
+	1. Added if statements for checking if VM folders exists, if not then create them
+	2. Added print statement to indicate pipeline version number
+#---------------------------------------------------------------------------------
+Version:
+v2.0.2
+Updates:
+	diffReps_Summary.* scripts:
+	1. Updated diffReps jobs (changed "differential" to "condition-specific")
+	diffReps.qsub:
+	1. Added BED file line count check (formatted line count with thousands separator)
+#---------------------------------------------------------------------------------
+Version:
+v2.0.3
+Updates:
+	02_Review_Pipeline_Parameters.sh:
+	1. Ran the 02_Review_Pipeline_Parameters.sh script to show the pipeline version in the *_Pipeline_Parameters.txt file 
+#---------------------------------------------------------------------------------
+Version:
+v2.0.4
+Updates:
+	01_Pipeline_Setup.sh:
+	1. Increased job time limit to: TIME_LIMIT="96:00:00". Some TopHat mapping jobs need longer than the default 12-hour time limit to complete.
+#---------------------------------------------------------------------------------
+Version:
+v2.0.5
+Updates:
+	02_FASTQC -> Summarize_Jobs.sh:
+	1. Added URL link after the script completes (the waxmanlabvm stores our FASTQC reports)
+#---------------------------------------------------------------------------------
+Version:
+v2.0.6
+Updates:
+	Generate_Tracks -> Generate_Tracks.sh:
+	1. Changed "${BU_User}'/Lab_Files/" to be my directory location (aramp10/Lab_Files)
+	*_diffReps_* -> diffReps.qsub
+	1. Now creates a "diffReps_sites_summary.txt" which includes the ENCODE blacklist filtering and called peak overlap summary stats
+#---------------------------------------------------------------------------------
+Version:
+v2.0.7
+Updates:
+	*_diffReps_*
+	1. /Scripts/diffReps_Summary.R: Updated script to evaluate different FDR cutoffs on number of delta sites.  Generate grouped bar plot as part of the diffReps output.
+#---------------------------------------------------------------------------------
+Version:
+v2.0.8
+Updates:
+	The question of read vs. fragment counting for the MACS2 job motivated the following fixes:
+	05_BAM_Count:
+	1. Generates a *_fragments.bed.gz
+	2. Generates a *_fragment_count.txt
+	3. Job generated "*****WARNING: Query" statements are saved in a compressed file
+	4. Summarize_Jobs.sh: generates a Fragment_count_Stats.txt
+	08_MACS2
+	1. Uses the *_fragments.bed.gz file to count fragments in peaks
+	2. Summarize_Jobs.sh: Corrected the ratio calculated to be FRAGMENT_IN_PEAK_RATIO
+	09_diffReps_1
+	1. Input: *_fragments.bed.gz file(s)
+	2. Create required BED6 formatted files
+	Updated the column headers in the job-specific summary files
+	Jobs with updated column headers:
+	1. 03_Read_Length
+		a. Add "(FASTQ file sequence count)"
+	2. 04_Bowtie2
+		a. TOTAL_READ_COUNT -> TOTAL_PE_READ_COUNT
+	3. 05_BAM_Count
+		a. TOTAL_READ_COUNT -> TOTAL_READ_COUNT(R1 + R2)
+		a. MAPPED_READ_COUNT(properly paired uniquely mapped) -> MAPPED_READ_COUNT(properly paired uniquely mapped)(R1 + R2)
+	4. 06_RmStraightPk
+		a. MAPPED_READ_COUNT -> MAPPED_READ_COUNT(R1 + R2)
+		b. MAPPED_READ_COUNT_(After_StrgtPks_removal) -> MAPPED_READ_COUNT_(After_StrgtPks_removal)(R1 + R2)
+	5. 08_MACS2
+		a. TOTAL_READ_COUNT -> MACS2_FRAGMENT_COUNT
+		b. READ_IN_PEAK_COUNT -> FRAGMENT_IN_PEAK_COUNT
+		c. READ_IN_PEAK_RATIO -> FRAGMENT_IN_PEAK_RATIO
+#---------------------------------------------------------------------------------
+Version:
+v2.0.9
+Updates:
+	1. Clean template pipeline folders:
+	The lab directory: /restricted/projectnb/waxmanlab/routines
+	Now has pipeline folders without previous job log files and summary folders
+	Users will only see job log files and summary folders from their data
+#---------------------------------------------------------------------------------
+Version:
+v2.0.10
+Updates:
+	1. 05_BAM_Count/Job_Summary: BAM_Count_Stats.txt
+		Header change from:
+		MAPPED_READ_COUNT_(After_StrgtPks_removal)(R1 + R2)
+		Change to:
+		MAPPED_READ_COUNT(properly paired uniquely mapped)(R1 + R2)
+		Script to modify/update:
+		Scripts/05_BAM_Count: Summarize_Jobs.sh
+		Header has been corrected
+#---------------------------------------------------------------------------------
+Version:
+v2.0.11
+Updates:
+	1. Updates to *_diffReps_*/Scripts/diffReps_Summary.* scripts
+		a. Issue: zero sites for some FDR cutoffs
+		There was an issue where if there were zero sites for any FDR cutoff
+		this would cause the script to fail/exit.
+		I fixed this issue by adding some conditional statements and 
+		writing an R function to parse data using a FDR cutoff 
+		(I call the function for each FDR cutoff)
+		b. Issue: ggplot using the wrong colors if zero sites exists
+		Issue where if there were zero sites, ggplot would use the wrong colors
+		I fixed the issue by using a named vector
+		Named vectors allow one to pair the group with a specific color
+		If the group does not exist, then that color will not be used
+		In other words, only groups with data will be plotted 
+		and only the colors from the named vector will be used in the plot
+#---------------------------------------------------------------------------------
+Version:
+v2.0.12
+Updates:
+	1. *_diffReps_* job scripts:
+	Users have the ability to add additional BED files of called peaks
+	diffReps_Summary.R: When sorting the down sites, sorting negative FC values, want to sort ascending
+	diffReps_Summary.sh: Added code relevant to the Input/BED_Regions folder
+	diffReps.qsub: Added code relevant to the Input/BED_Regions folder
+#---------------------------------------------------------------------------------
+Version:
+v2.0.13
+Updates:
+	1. Added the *_Trim_Galore step to the pipeline
+	Added a READ_LEN (read length) variable to the 01_Pipeline_Setup.sh
+	This step processes FASTQ files and checks for the presence of adaptor sequence
+	Summarize_Jobs.sh creates a dataset summary to view statistics for all samples
+	This summary file is useful for confirming presence/absence of adaptor sequence
+#---------------------------------------------------------------------------------
+Version:
+v2.0.14
+Updates:
+	1. *_diffReps_* job:
+	Replaced Input/BED_Regions with Additional_Peak_Calls folder
+	Makes sense to call it "Additional_Peak_Calls" because they are additional peak calls that get added to the sample-specific peak calls
+	I already create an "Input" folder as part of the qsub commands; having another "Input" folder was incorrectly causing BAM files to be copied back to the script directory
+	This issue has been fixed.
+#---------------------------------------------------------------------------------
+Version:
+v2.0.15
+Updates:
+	1. *_Generate_Tracks job:
+	Updated chromatin state tracks (updated files provided by Gracia)
+	Updated tracks reflect a color change in the chromatin state maps
+	BigBed_Name_Color.txt: Change "segments_colored" to "segments_recolored" 
+	Also added the "chrom_state_legend.pdf" in the *_Generate_Tracks folder
+#---------------------------------------------------------------------------------
+Version:
+v2.1.0
+Updates:
+1. *_RiPPM_Normalization: 
+	Added this step to implement a read in peak per million (RiPPM) normalization
+	This step runs after the peak calling step, it generates a peak union BED file
+	For each sample, reads in peak union sites are counted
+	These counts are used for the RiPPM procedure
+	The summaryscript  for this step automatically generates a R Markdown report
+	The user can refer to this report for 
+		(1) details of the RiPPM procedure 
+		(2) analysis plots to confirm the normalization worked
+2. *_normbigWig:
+	Information from the *_RiPPM_Normalization is used for bigWig file creation
+	Using a BAM file instead of a BED file of reads as input
+	Using an awk command rather than a Perl script to implement the normalization
+	The summary script copies the *_RiPPM_norm.bw files to the VM for UCSC visualization
+3. *_Generate_Tracks:
+	Tracks lines are generated using *_RiPPM_norm.bw files	
+#---------------------------------------------------------------------------------
+Version:
+v2.1.1
+Updates:
+1. General updates:
+	Job specific scripts are stored in a "Job_Scripts" folder 
+	(the folder was originally named "Scripts")
+	Multiple pipeline steps were updated
+	Summarize_Jobs.sh was updated to remove hard-coded "/Scripts/" location
+	This now allows for the script to work in any location
+	Multiple pipeline steps were updated
+2. Removed the standard_read_count variable
+	This is no longer used in the pipeline due to RiPPM normalization
+	Removed from: 13_normbigWig, 01_Pipeline_Setup.sh, 02_Review_Pipeline_Parameters.sh
+#---------------------------------------------------------------------------------
+Version:
+v2.1.2
+Updates:
+1. Removing hard-coded "Scripts" location:
+	Confirmed that the "Scripts" location is no longer hard-coded in all pipeline steps
+	Checked 01_Pipeline_Setup.sh, Run_Jobs.sh, Summarize_Jobs.sh
+2. Added a note in the README_Paired_End_Reads.txt: 
+	Included a "shortcut" for allowing login without password prompt between SCC and the VM
+#---------------------------------------------------------------------------------
+Version:
+v2.1.3
+Updates:
+1. Update_ChIP_DNase_Pipeline_Paired_End.sh:
+	Added code to clean up "Input/BED_Regions" folder
+	I check if the "Input/BED_Regions" folder exists, then delete files in that folder
+	This creates a clean version for the lab template pipeline
+2. Implemented a solution for running parallel pipelines
+3. Implemented a solution for running parallel pipelines
+Issue: if the user ran multiple pipeline instances, one pipeline instance may hinder progress of other pipeline instances due to counting the total number of jobs the user is running
+The user may have other jobs besides the pipeline that they maybe executing
+This is also a problem if the user wants to run multiple pipeline instances
+If one pipeline has a relatively large sample, this longer processing time will hinder other pipeline instances from progressing to the next step
+A solution would be to have a unique name for each pipeline instance
+This unique name would be appended to each job name
+Only when the job count (with the unique name) goes to zero, then the pipeline would progress to the next step
+Fortunately, I already have a Dataset_Label variable that the user initializes in the 01_Pipeline_Setup.sh form
+The Dataset_Label will be this unique name
+Pipeline code changes:
+03_Run_Pipeline.sh: search for the job name
+For each pipeline step: Run_Jobs.sh
+Key part: make sure that the Job_Name value is exactly the same
+Job_Name=$(echo 'Step_'${Step_Num}) change to:
+Job_Name=$(echo 'Step_'${Step_Num}'_'${Dataset_Label})
+I've tested the above solution works for running parallel pipeline instances
+Parallel pipelines now return results faster compared to potential analysis stalling
+#---------------------------------------------------------------------------------
+Version:
+v2.1.4
+Updates:
+1. 10_diffReps_*/setup_diffReps.sh:
+Added the following note:
+#Avoid spaces and parentheses for these variable names: only use underscores for separating words
+I also included code at the end to specifically replace spaces and parentheses with underscores in both Control_Samples_NAME and Treatment_Samples_NAME variables
+This fix should avoid issues with users providing these condition names
+2. Peak_Union_Count_Stats.Rmd script:
+I needed more general solution for extracting the sample name from the count files
+Rather than extract a "G#_M#" pattern, I extracted the beginning of the file name
+3. Obtaining the Peak_Union.bed
+09_RiPPM_Normalization -> Created folder: Peak_Union
+08_MACS2 -> Summarize_Jobs.sh
+	General way to obtain the RiPPM_Normalization job name
+	(copying Peak_Union.bed between steps)
+	Creates the 09_RiPPM_Normalization/Peak_Union folder
+09_RiPPM_Normalization -> Peak_Union_Count.qsub
+	Instead of redundantly generating the same Peak_Union.bed (for each sample)
+	Now using the Peak_Union.bed generated from the Summarize_Jobs.sh (08_MACS2)
+09_RiPPM_Normalization -> Summarize_Jobs.sh
+	Updated where to find the Peak_Union.bed (Peak_Union folder)
+	General way to obtain the normbigWig job name 
+	(copying Norm_Factors.txt between steps)
+#---------------------------------------------------------------------------------
+Version:
+v2.2.0
+Updates:
+00_Setup_Pipeline/01_Pipeline_Setup.sh
+	1. Added variable Input_Sites_RiPPM ("MACS2" or "SICER")
+08_MACS2/Summarize_Jobs.sh
+	1. Check value of Input_Sites_RiPPM
+	Input_Sites_RiPPM determines if peak union sites will be used for RiPPM input
+New pipeline step: 08b_SICER
+	1. Run_Jobs.sh: submits SICER.qsub jobs
+	2. SICER.qsub: runs SICER per sample
+	3. Summarize_Jobs.sh: prints summary file and Ratio_Genome_Covered
+	Input_Sites_RiPPM determines if peak union sites will be used for RiPPM input
+09_RiPPM_Normalization:
+	1. Peak_Union_Count.qsub: 
+	using peak union file from MACS2 or SICER (Summarize_Jobs.sh)
+	2. Summarize_Jobs.sh:
+	FRAGMENT_COUNT will be controlled by the value of ${Input_Sites_RiPPM}
+	Peak_Union.bed in the ${SCRIPT_DIR} (rather than sample-specific folders)
+	($MACS2_FRAGMENT_COUNT) is replaced by ($FRAGMENT_COUNT)
+deepTools jobs (e.g. 12_bamCorrelate)
+	1. Updated pipeline steps (using newer version of deepTools)
+	2. Refer to RXR data set analysis
+	3. New pipeline steps: 12_plotCorrelation and 13_plotPCA
+13_normbigWig
+	1. Summarize_Jobs.sh: copying additional peak calls (i.e SICER peak calls)
+14_Generate_Tracks
+	1. Generate_Tracks.sh
+	Generate track lines for SICER peak calls
+#---------------------------------------------------------------------------------
+Version:
+v2.3.0
+Updates:
+00_Setup_Pipeline:
+	1. 01_Pipeline_Setup.sh: 
+	VM_DIR_FASTQC: remove "public_html" from the directory path
+	We are now using the waxman-server mount point on the SCC:
+	 /net/waxman-server/mnt/data/waxmanlabvm_home/
+	Move VM_DIR_FASTQC variable to bottom of 01_Pipeline_Setup.sh
+	VM_DIR_public_html: rename variable to VM_DIR_UCSC, remove "public_html"
+	(We are now using the waxman-server mount point on the SCC)
+	2. 02_Review_Pipeline_Parameters.sh:
+	Check if VM_DIR_FASTQC exists: remove ssh, only check the location
+	Check if VM_DIR_UCSC exists: remove ssh, only check the location
+02_FASTQC:
+	1. Summarize_Jobs.sh: change scp command to copy command,
+	change echo statement (no longer using the tilde for file/folder paths)
+14_normbigWig:
+	1. Summarize_Jobs.sh: change scp command to copy command
+15_Generate_Tracks: 
+	1. Generate_Tracks.sh: remove tilde, use full file/folder paths
+08_MACS2/Summarize_Jobs.sh:
+	1. Add module load command for BEDTools (module load bedtools/2.26.0)
+08b_SICER/Summarize_Jobs.sh:
+	1. Add module load command for BEDTools (module load bedtools/2.26.0)
+#---------------------------------------------------------------------------------
+Version:
+v2.3.1
+Updates:
+14_normbigWig:
+	VM_DIR_public_html: rename variable to VM_DIR_UCSC, remove "public_html"
+	Modified files: 
+	Run_Jobs.sh
+	normbigWig.qsub (also fix echo statement "Need 6 arguments")
+	Confirmed that the Summarize_Jobs.sh has VM_DIR_UCSC
+	Recheck the variable names for 'VM_DIR_public_html':
+	Only match: Pipeline_Version_History.txt (this is correct)
+00_Setup_Pipeline/03_Run_Pipeline.sh:
+	1. Added echo statements to indicate parallel pipelines:
+	echo ${BU_User}" running "${Job_Count}" jobs"
+	echo "Note: the user may have other jobs or pipeline instances running."
+	echo "Only jobs in this pipeline instance will be monitored or counted."
+	echo "Periodically checking until jobs complete (please wait)..."
+#---------------------------------------------------------------------------------
+Version:
+v2.4.0
+Updates:
+09_RiPPM_Normalization
+	Modified the Job_Scripts/R_Markdown/Peak_Union_Count_Stats.Rmd script
+	Issue: directly using the RiPPM factors vastly changed the read counts before and after normalization
+	Solution: I added a step for RiPPM_Factor conversion to Norm_Factor
+	The "standard" sample is the sample with the minimum RiPPM_Factor value
+	The sample specific Norm_Factor is relative to the standard sample
+	Counts after normalization are now more similar to the counts before normalization
+	Previously, using the RiPPM_Factor: Normalized counts = (raw count) / (RiPPM_Factor)
+	Currently, using the Norm_Factor: Normalized counts = (raw count) * (Norm_Factor)
+	I've confirmed that the box plots after normalization are all correctly aligned
+14_normbigWig
+	Modified the Job_Scripts/Convert_BAM_to_WIG_v15/BAM_to_WIG/BAM_to_WIG.sh script
+	I implemented the same concept above:
+	Currently, using the Norm_Factor: Normalized counts = (raw count) * (Norm_Factor)
+	I've confirmed that the newly created bigWig tracks work for visualizing the data
+#---------------------------------------------------------------------------------
+Version:
+v2.4.1
+Updates:
+11_MEME_ChIP
+	Updated the Input/Peak_Midpoint/Peak_Midpoint.R
+	Fixed an issue related to the R script using scientific notation to abbreviate numbers
+	This script would generate BED coordinates with scientific notation
+	For example: chr2	3e+07	30000500
+	Having the scientific notation is causing the following issue with CentriMo:
+	FATAL: Sequence chr2:3-30000500 is too long (maximum=32768).
+	CentriMo is interpreting the "3e+07" as "3" instead of 3 with seven zeros
+	The issue has been fixed, the R script now correctly prints:
+	chr2	30000000	30000500
+	I've confirmed this R script works correctly with the MEME_ChIP job
+#---------------------------------------------------------------------------------
+Version:
+v2.5.0
+Updates:
+02_FASTQC
+	A newer version of FASTQC was needed to fix an error
+	I added the following line of code to the FASTQC.qsub:
+	module load fastqc/0.11.7
+16_GEO_Checksum
+	I added this pipeline step to help with the GEO data upload process
+	This job generates a text file that lists all data files and correspnding checksum strings
+10_diffReps_1
+	Update to Run_Jobs.sh and diffReps.qsub
+	I implemented a check on the Input_Sites_RiPPM variable
+	Check the value of ${Input_Sites_RiPPM} (either MACS2 or SICER)
+	Then copy over the corresponding peak or region BED files
+	This copy command will be controlled by the value of ${Input_Sites_RiPPM}
+09_RiPPM_Normalization
+	I added the following code the the Summarize_Jobs.sh script:
+	module load gcc/7.2.0
+	For the Peak_Union_Count_Stats.Rmd: I implemented a check on the Sample_Count
+	The pairs analysis will only run if the Sample_Count is less than or equal to 9 samples.
+	For data sets with greater than 9 samples; this pairs analysis will be skipped.
+#---------------------------------------------------------------------------------
+##################################################################################

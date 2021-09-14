@@ -1,0 +1,164 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 03.01.16
+#This script is called by Read_Length.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+set -eu
+# Run on the current working directory
+#$ -cwd
+
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+##################################################################################
+#Initialize variables from Read_Length.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 4 ] ; then
+      echo "Need 4 arguments for the qsub command:"
+      echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} Read_Length.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${OUTPUT_DIR}"
+      exit 0
+fi
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+OUTPUT_DIR=$4
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Sample_ID:"
+echo ${Sample_ID}
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "Parameter for multiple cores : $NSLOTS"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#No modules needed
+#--------------------------------------
+
+#-----------------------------------------------------
+# copy user input data files to scratch
+#Copy over the *R1*.fastq.gz file(s):
+cp ${Dataset_DIR}/${Sample_ID}/fastq/*R1*.fastq.gz .
+#Copy over the *R2*.fastq.gz file(s):
+cp ${Dataset_DIR}/${Sample_ID}/fastq/*R2*.fastq.gz .
+#-----------------------------------------------------
+
+echo
+echo 'List files in scratch directory:'
+echo
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+echo
+echo 'Unzip files:'
+echo
+
+time gzip -d *.gz
+
+echo
+echo 'Finished unzipping'
+echo
+
+# run my commands.
+echo
+echo 'Starting Read Length'
+echo
+
+OUTPUT_FILE=$OUTPUT_DIR/${Sample_ID}'_read_length.txt'
+######################
+if [ -f $OUTPUT_FILE ]
+then 
+rm $OUTPUT_FILE
+else
+touch $OUTPUT_FILE
+fi
+######################
+
+#-----------------------------------------------------------------------------------
+#awk Command Explanation:
+#http://www.biostars.org/p/72433/
+#For every 2nd line in group of 4 lines (NR%4 == 2):
+#Count the number of characters in the read sequence (length($0))
+#Store that count in the array (lengths)
+#Record the frequency of distinct counts in array (lengths) ({lengths[length($0)]++})
+#End the loop (END)
+#Print the output:
+#For each element (L) in array (lengths) (for (L in lengths))
+#Print the element (L), tab, frequency of (L) ({print L "\t" lengths[L]})
+#Input file: sample.fastq, Output file: Read_Length.txt
+#Alternate explanation:
+#It reads like this: every second line in every group of 4 lines (the sequence line), measure the length of the sequence and increment the array cell corresponding to that length. When all lines have been read, loop over the array to print its content. In awk, arrays and array cells are initialized when they are called for the first time, no need to initialize them before. 
+#-----------------------------------------------------------------------------------
+#Run this awk command for each fastq file:
+FASTQ_LIST=*.fastq
+for FASTQ_FILE in ${FASTQ_LIST}
+do
+echo
+echo "Processing "${FASTQ_FILE}
+echo
+#Need a "-v" for every variable
+awk -v Sample_ID=${Sample_ID} -v FASTQ_FILE=${FASTQ_FILE} 'NR%4 == 2 {lengths[length($0)]++} END {for (L in lengths) {print Sample_ID "\t" FASTQ_FILE "\t" L "\t" lengths[L]}}' ${FASTQ_FILE} >> $OUTPUT_FILE
+done
+
+echo
+echo 'Ending Read Length'
+echo
+
+echo
+echo "List files in scratch"
+echo
+ls -alh
+
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"

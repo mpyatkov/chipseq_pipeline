@@ -1,0 +1,260 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 08.04.17
+#This script is called by Run_Jobs.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+# Run on the current working directory
+#$ -cwd
+
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+
+##################################################################################
+#Initialize variables from Run_Jobs.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 6 ] ; then
+    echo "Need 7 arguments for the qsub command:"
+    echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} normbigWig.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${SCRIPT_DIR} ${BU_User} ${VM_DIR_UCSC}"
+    exit 0
+fi
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+SCRIPT_DIR=$4
+BU_User=$5
+VM_DIR_UCSC=$6
+
+#http://www.ibm.com/developerworks/library/l-bash-parameters/
+#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
+
+#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
+#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "SCRIPT_DIR:"
+echo ${SCRIPT_DIR}
+echo "BU_User:"
+echo ${BU_User}
+echo "VM_DIR_UCSC:"
+echo ${VM_DIR_UCSC}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#Search for latest program installed:
+#module avail -t 2>&1 | grep -i bedtools
+module load bedtools/2.27.1
+#module avail -t 2>&1 | grep -i boost
+module load boost/1.69.0
+#module avail -t 2>&1 | grep -i samtools
+module load samtools/1.8
+#---------------------------------------------------------------------------------------
+#----------- Module Specific Help for 'bedtools/2.25.0' ------------
+#bedtools 2.25.0 A swiss army knife for genome arithmetic.
+#Collectively, the bedtools utilities are a swiss-army knife of tools for a wide-range of genomics analysis tasks. The most widely-used tools enable genome arithmetic: that is, set theory on the genome. For example, bedtools allows one to intersect, merge, count, complement, and shuffle genomic intervals from multiple files in widely-used genomic file formats such as BAM, BED, GFF/GTF, VCF. While each individual tool is designed to do a relatively simple task (e.g., intersect two interval files), quite sophisticated analyses can be conducted by combining multiple bedtools operations on the UNIX command line.
+#For more information on bedtools, please see http://bedtools.readthedocs.org/en/latest/
+#---------------------------------------------------------------------------------------
+#module help boost/1.58.0
+#----------- Module Specific Help for 'boost/1.58.0' ---------------
+#boost 1.58.0 Peer-reviewed portable C++ source libraries.
+#This build supports Boost's MPI library. It includes both shared and static
+#versions of the extra boost libraries.
+#For more information on boost, please see http://www.boost.org
+#---------------------------------------------------------------------------------------
+#module help samtools/1.3
+#----------- Module Specific Help for 'samtools/1.3' ---------------
+#samtools 1.3 Samtools is a suite of programs for interacting with high-throughput sequencing data
+#<<Place Long Description of Package Here>>
+#For more information on samtools, please see http://www.htslib.org/
+#---------------------------------------------------------------------------------------
+
+#Copy BAM file to scratch:
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_sorted_mapped.bam' .
+
+#Copy Norm_Factors.txt from the Peak_Union_Count step:
+cp -r $SCRIPT_DIR/Input/Norm_Factors.txt .
+
+#Copy conversion folder to scratch:
+SCRIPT_DIR=${SCRIPT_DIR}/Job_Scripts
+cp -r $SCRIPT_DIR/Convert_BAM_to_WIG_v15/BAM_to_WIG/ .
+
+#Sample specific output dir:
+STORAGE_DIR=${Dataset_DIR}/${Sample_ID}/fastq/bowtie2
+######################
+if [ ! -d ${STORAGE_DIR} ]
+then
+    mkdir ${STORAGE_DIR}
+fi
+######################
+
+#Assign OUTPUT_DIR variable:
+OUTPUT_DIR=${TMPDIR}/normbigWig
+mkdir ${OUTPUT_DIR}
+
+echo
+echo 'List files in scratch directory:'
+echo
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+echo
+echo 'Parsing Norm_Factors.txt to obtain the sample_norm_factor'
+echo
+
+#Extract the sample-specific row:
+#http://stackoverflow.com/questions/27390292/match-specific-column-with-grep-command
+#Using variable within awk command:
+#http://stackoverflow.com/questions/19075671/how-to-use-shell-variables-in-an-awk-script
+#Want the 4th column (norm_factor)
+sample_norm_factor=$(awk -v Sample_ID="${Sample_ID}" '$1 == Sample_ID' Norm_Factors.txt | awk '{print $4}')
+echo 'This is the sample_norm_factor:'
+echo ${sample_norm_factor}
+
+#---------------------------------------------------------------------------------------
+#samtools view 
+
+#Usage: samtools view [options] <in.bam>|<in.sam>|<in.cram> [region ...]
+
+#Options:
+#  -b       output BAM
+#  -C       output CRAM (requires -T)
+#  -1       use fast BAM compression (implies -b)
+#  -u       uncompressed BAM output (implies -b)
+#  -h       include header in SAM output
+#  -H       print SAM header only (no alignments)
+#  -c       print only the count of matching records
+#  -o FILE  output file name [stdout]
+#  -U FILE  output reads not selected by filters to FILE [null]
+#  -t FILE  FILE listing reference names and lengths (see long help) [null]
+#  -L FILE  only include reads overlapping this BED FILE [null]
+#  -r STR   only include reads in read group STR [null]
+#  -R FILE  only include reads with read group listed in FILE [null]
+#  -q INT   only include reads with mapping quality >= INT [0]
+#  -l STR   only include reads in library STR [null]
+#  -m INT   only include reads with number of CIGAR operations consuming
+#           query sequence >= INT [0]
+#  -f INT   only include reads with all bits set in INT set in FLAG [0]
+#  -F INT   only include reads with none of the bits set in INT set in FLAG [0]
+#  -x STR   read tag to strip (repeatable) [null]
+#  -B       collapse the backward CIGAR operation
+#  -s FLOAT integer part sets seed of random number generator [0];
+#           rest sets fraction of templates to subsample [no subsampling]
+#  -@, --threads INT
+#           number of BAM/CRAM compression threads [0]
+#  -?       print long help, including note about region specification
+#  -S       ignored (input format is auto-detected)
+#      --input-fmt-option OPT[=VAL]
+#               Specify a single input file format option in the form
+#               of OPTION or OPTION=VALUE
+#  -O, --output-fmt FORMAT[,OPT[=VAL]]...
+#               Specify output format (SAM, BAM, CRAM)
+#      --output-fmt-option OPT[=VAL]
+#               Specify a single output file format option in the form
+#               of OPTION or OPTION=VALUE
+#  -T, --reference FILE
+#               Reference sequence FASTA FILE [null]
+#---------------------------------------------------------------------------------------
+
+#Rather than covert BAM to BED (inefficient to deal with BED files of reads)
+#It's better to use the BAM file format (saves space and faster data processing)
+
+#Move BED file to conversion folder:
+mv ${Sample_ID}'_sorted_mapped.bam' ./BAM_to_WIG/Input_files/
+
+echo
+echo 'Starting BAM_to_WIG'
+echo
+
+echo
+echo 'Time to run BAM_to_WIG.sh'
+echo
+cd BAM_to_WIG/
+#Call BAM_to_WIG.sh with ${sample_norm_factor} variable
+time ./BAM_to_WIG.sh ${sample_norm_factor}
+cp temp_bw/*.bw ${OUTPUT_DIR}
+
+echo
+echo 'Finished BAM_to_WIG'
+echo
+
+echo
+echo 'Copy OUTPUT_DIR to STORAGE_DIR'
+echo
+
+########################################################
+#Remove output dir from storage (running multiple times)
+if [ -d ${STORAGE_DIR}/normbigWig ]; 
+then
+    rm -r ${STORAGE_DIR}/normbigWig;
+fi
+########################################################
+cp -r ${OUTPUT_DIR} ${STORAGE_DIR}
+echo "cp -r ${OUTPUT_DIR} ${STORAGE_DIR}"
+########################################################
+
+echo "=========================================================="
+echo "Tree view of compute node:"
+echo "=========================================================="
+#Use tree command without wildcard (avoid [error opening dir] message)
+tree -h
+#---------------------------------------------------------------------------------
+#-h     Print  the size of each file but in a more human readable way, e.g. appending a size letter for kilobytes (K), megabytes (M), gigabytes (G), terrabytes (T),  petabytes  (P)  and exabytes (E).
+#-A     Turn on ANSI line graphics hack when printing the indentation lines.
+#---------------------------------------------------------------------------------
+#The (-A) option adds non-readable characters (do not use)
+#---------------------------------------------------------------------------------
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"

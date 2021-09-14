@@ -1,0 +1,324 @@
+#!/bin/bash -l
+set -eu
+##################################################################################
+#Andy Rampersaud, 07.27.16
+#This script is called by BAM_Count.sh
+##################################################################################
+# Specify which shell to use
+#$ -S /bin/bash
+# Run on the current working directory
+#$ -cwd
+#$ -l scratch_free=200G
+# Join standard output and error to a single file  
+#$ -j y
+# change to y if you want a single qlog file 
+
+##################################################################################
+#Initialize variables from BAM_Count.sh
+##################################################################################
+#checking the command line arg
+#-ne : "is not equal to"
+if [ $# -ne 6 ] ; then
+      echo "Need 5 arguments for the qsub command:"
+      echo "qsub -N ${Job_Name}'_'${Sample_ID} -P waxmanlab -l h_rt=${TIME_LIMIT} -q !linga BAM_Count.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${Count_OUTPUT_DIR} ${SCRIPT_DIR} ${Fragment_Count_OUTPUT_DIR}"
+      exit 0
+fi
+#process the command line arguments
+Sample_ID=$1
+Dataset_DIR=$2
+Sample_Labels_DIR=$3
+Count_OUTPUT_DIR=$4
+SCRIPT_DIR=$5
+Fragment_Count_OUTPUT_DIR=$6
+
+#http://www.ibm.com/developerworks/library/l-bash-parameters/
+#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
+
+#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
+#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
+
+#Print variables (make sure they appear correctly):
+echo "-----------------------"
+echo "Start of variable list:"
+echo "-----------------------"
+echo "Sample_ID:"
+echo ${Sample_ID}
+echo "Dataset_DIR:"
+echo ${Dataset_DIR}
+echo "Sample_Labels_DIR:"
+echo ${Sample_Labels_DIR}
+echo "Count_OUTPUT_DIR"
+echo ${Count_OUTPUT_DIR}
+echo "SCRIPT_DIR"
+echo ${SCRIPT_DIR}
+echo "Fragment_Count_OUTPUT_DIR"
+echo ${Fragment_Count_OUTPUT_DIR}
+echo "-----------------------"
+echo "End of variable list"
+echo "-----------------------"
+
+# Now let's keep track of some information just in case anything goes wrong
+echo "=========================================================="
+#Use to calculate job time:
+#Start_Time in seconds
+Start_Time=$(date +"%s")
+echo "Starting on : $(date)"
+echo "Running on node : $(hostname)"
+echo "Current directory : $(pwd)"
+echo "Current job ID : $JOB_ID"
+echo "Current job name : $JOB_NAME"
+echo "Task index number : $SGE_TASK_ID"
+echo "=========================================================="
+
+# Go to local scratch directory
+echo
+echo 'Change dir to scratch directory'
+echo
+cd ${TMPDIR}
+echo
+echo 'Print scratch directory location:'
+echo
+echo $TMPDIR
+#--------------------------------------
+echo
+echo 'Loading required modules...'
+echo
+#Make sure the shebang line = #!/bin/bash -l
+set -eu
+#Need the -l option to load modules
+#Search for latest program installed:
+#module avail -t 2>&1 | grep -i boost
+module load boost
+#module avail -t 2>&1 | grep -i samtools
+module load samtools/0.1.19
+#module avail -t 2>&1 | grep -i bedtools
+module load bedtools/2.27.1
+#--------------------------------------
+#module help boost/1.54.0
+#----------- Module Specific Help for 'boost/1.54.0' ---------------
+#Boost provides free peer-reviewed portable C++ source libraries.
+#http://www.boost.org/
+
+#module help samtools/samtools-0.1.19_gnu446
+#----------- Module Specific Help for 'samtools/samtools-0.1.19_gnu446' ---------------------------
+#sets the environment for samtools (0.1.19) built using GNU Compilers
+#SAM (Sequence Alignment/Map) format is a generic format for storing
+#large nucleotide sequence alignments. SAM Tools provide various utilities
+#for manipulating alignments in the SAM format, including sorting, merging,
+#indexing and generating alignments in a per-position format.
+#http://samtools.sourceforge.net/
+#--------------------------------------
+
+# copy user input data files to scratch
+#Need to copy Bowtie2 index and input FASTQ file
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_alignments'.bam .
+
+#Make output dir:
+OUTPUT_DIR=${Dataset_DIR}/${Sample_ID}/fastq/bowtie2
+##############################
+if [[ ! -d $OUTPUT_DIR ]]; 
+then
+mkdir $OUTPUT_DIR
+fi
+##############################
+
+echo
+echo 'List files in scratch directory:'
+echo
+ls -alh
+
+echo
+echo 'Starting to run my commands'
+echo
+
+#BAM file sorted from bowtie2 job
+#Sort BAM file
+#samtools sort ${Sample_ID}'_mm9_bestmap.bam' ${Sample_ID}'_sorted'
+#--------------------------------------------------------
+#Collect statistics for the BAM file from Bowtie2 mapping (contains mapped and un-mapped reads)
+#Counts total reads and gives mapped percentage
+samtools flagstat ${Sample_ID}'_alignments'.bam > 'flagstat_'${Sample_ID}'.txt'
+#--------------------------------------------------------
+#Discussion post for: How To Extract Reads-Pairs Aligned Concordantly Exactly 1 Time?
+#https://www.biostars.org/p/95929/
+#"As I mentioned in the comment above, the -f 0x2 part will get only "properly paired" alignments, which will effectively be the concordant alignments. For the option #2 definition of "map only once", you can take advantage of the fact that bowtie2 will add an XS auxiliary tag to reads that have another "valid" mapping. So, a quick inverse grep (grep -v) can get rid of those."
+samtools view -hf 0x2 ${Sample_ID}'_alignments'.bam | grep -v "XS:i:" > ${Sample_ID}'.filtered.alignments.sam'
+#--------------------------------------------------------
+#Note about the filtering:
+#The above command should work for obtaining the Bowtie's reported reads that "aligned concordantly exactly 1 time"
+#But the numbers reported in the Bowtie output don't exactly match the numbers from this filtering
+#I spent some time trying to de-bug this issue but the read counts are similar enough between the Bowtie2 output and filtering by this script
+#It's possible the Bowtie2 calculation for "aligned concordantly exactly 1 time" is different from what we expect
+#This BAM_Count job returns slightly fewer reads than what is reported in the Bowtie2 output statistics
+#--------------------------------------------------------
+#Convert SAM -> BAM
+#Creates a sorted BAM file from the SAM file
+samtools view -bS ${Sample_ID}'.filtered.alignments.sam' | samtools sort - ${Sample_ID}'_sorted_mapped'
+#--------------------------------------------------------
+#The idxstats is used to get the Mapped_Read_Count in (BAM_Count_Summary.sh)
+#This needs to be after the multi-mapped reads filter
+#-----------------------------------------------------------
+#Get per chromosome count (need to eliminate chrM/chrRandom)
+#Need the BAM file index before doing idxstats command:
+#Generate BAM index
+samtools index ${Sample_ID}'_sorted_mapped'.bam
+samtools idxstats ${Sample_ID}'_sorted_mapped'.bam > ${Sample_ID}'_idxstats.out'
+#Remove index file
+#rm ${Sample_ID}'_sorted_mapped'.bam.bai
+#-----------------------------------------------------------
+#For single-end reads we just want to extract the mapped reads:
+#Extract mapped reads
+#samtools view -F 4 -b ${Sample_ID}'_multi_filter'.bam > ${Sample_ID}'_sorted_mapped'.bam
+#Check that getting the correct number of mapped reads:
+#samtools flagstat ${Sample_ID}'_sorted_mapped'.bam > 'flagstat_'${Sample_ID}'_sorted_mapped.txt'
+#------------------------------------------------------------------------------
+#For paired-end reads we just want to extract the "read mapped in proper pair":
+#Explanation of flag (0x2):
+#https://broadinstitute.github.io/picard/explain-flags.html 
+#-f INT    Only output alignments with all bits set in INT present in the FLAG field.
+#-b       output BAM
+#samtools view -f 0x2 -b ${Sample_ID}'_multi_filter'.bam > ${Sample_ID}'_sorted_mapped'.bam
+##Check that getting the correct number of mapped reads:
+#samtools flagstat ${Sample_ID}'_sorted_mapped'.bam > 'flagstat_'${Sample_ID}'_sorted_mapped.txt'
+#------------------------------------------------------------------------------
+##################################################################################
+#Dealing with PE data: we need a BED file of fragments
+#Subsequent steps that need a BED file of features should use a BED of fragments for PE data
+#---------------------------------------------------------------------------------
+#https://www.biostars.org/p/149119/
+## Sort by read name
+#Leave out the output file extension for samtools sort
+echo 'Starting Sort by read name'
+samtools sort -n ${Sample_ID}'_sorted_mapped'.bam ${Sample_ID}'_sorted_byname'
+echo 'Ended Sort by read name'
+#---------------------------------------------------------------------------------
+#For samtools options (-bf) makes sense:
+#https://www.biostars.org/p/7620/
+#See comment above regarding (-f 0x2)
+echo 'Starting BEDPE file creation'
+samtools view -bf 0x2 ${Sample_ID}'_sorted_byname.bam' | bamToBed -i stdin -bedpe | cut -f 1,2,6 > ${Sample_ID}'_fragments.bed'
+#Sort the BED file:
+#http://bedtools.readthedocs.io/en/latest/content/tools/sort.html
+sort -k 1,1 -k2,2n ${Sample_ID}'_fragments.bed' > temp1.bed
+mv temp1.bed ${Sample_ID}'_fragments.bed'
+#Should compress the BED file:
+gzip ${Sample_ID}'_fragments.bed'
+echo 'Ended BEDPE file creation'
+echo '#--------------------------------------------------------------------------'
+echo 'Sample lines from file head:'
+echo
+zcat ${Sample_ID}'_fragments.bed.gz' | head -n 10
+echo
+echo 'Sample lines from file tail:'
+echo
+zcat ${Sample_ID}'_fragments.bed.gz' | tail -n 10
+echo '#--------------------------------------------------------------------------'
+#Want to collect a fragment count
+echo 'Starting fragment count'
+#Output dir:
+#Fragment_Count_OUTPUT_DIR
+OUTPUT_FILE=$Fragment_Count_OUTPUT_DIR/${Sample_ID}'_fragment_count.txt'
+#Count the number of lines in a compressed file:
+#---------------------------------------------------------------------------------
+#Dealing with compressed files:
+#http://superuser.com/questions/135329/count-lines-in-a-compressed-file
+#Want the line count:
+#zcat file.gz | wc -l
+#See sample lines:
+#zcat file.gz | head -n > sample_lines.txt
+#---------------------------------------------------------------------------------
+Frag_Count=$(zcat ${Sample_ID}'_fragments.bed.gz' | wc -l )
+echo 'Printing to output file'
+echo ${Sample_ID} $'\t'$Frag_Count >> $OUTPUT_FILE
+echo 'Ended fragment count'
+##################################################################################
+#Need to check the count of positive and negative strand reads
+#Output dir:
+#Count_OUTPUT_DIR
+#Set up in BAM_Count_Parallel.sh
+OUTPUT_FILE=$Count_OUTPUT_DIR/${Sample_ID}'_read_strand_count.txt'
+######################
+if [ -f $OUTPUT_FILE ]
+then 
+rm $OUTPUT_FILE
+else
+touch $OUTPUT_FILE
+fi
+######################
+#https://www.biostars.org/p/14378/
+#Count (+) strand reads:
+Pos_Count=$(samtools view -F 0x10 ${Sample_ID}'_sorted_mapped'.bam | wc -l)
+#Count (-) strand reads:
+Neg_Count=$(samtools view -f 0x10 ${Sample_ID}'_sorted_mapped'.bam | wc -l)
+#Calculate the difference:
+Count_Diff=$(echo "$Pos_Count - $Neg_Count" | bc)
+#Also useful to know what percentage of the total reads is the Count_Diff
+Total_Reads=$(echo "$Pos_Count + $Neg_Count" | bc)
+Count_Diff_Ratio=$(echo "scale=4;$Count_Diff/$Total_Reads" | bc)
+echo 'Printing to output file'
+echo ${Sample_ID} $'\t'$Pos_Count $'\t'$Neg_Count $'\t'$Total_Reads $'\t'$Count_Diff $'\t'$Count_Diff_Ratio >> $OUTPUT_FILE
+#--------------------------------------------------------
+#Need to remove files from previous job runs
+#rm $OUTPUT_DIR/*.bam.bai
+set +eu
+rm $OUTPUT_DIR/*.out 
+rm $OUTPUT_DIR/flagstat_*.txt
+
+#--------------------------------------------------------
+#Copy files back to storage
+cp *.out $OUTPUT_DIR
+cp *.txt $OUTPUT_DIR
+#Need *'_sorted_mapped'.bam file for straight peak processing
+cp ${Sample_ID}'_sorted_mapped'.bam $OUTPUT_DIR
+#Need ${Sample_ID}'_sorted_mapped'.bam.bai
+cp *.bam.bai $OUTPUT_DIR
+#Need the ${Sample_ID}'_fragments.bed.gz' file
+cp ${Sample_ID}'_fragments.bed.gz' $OUTPUT_DIR
+#--------------------------------------------------------
+
+################################################################################
+echo
+echo 'Cleaning up job log files'
+echo
+cd ${SCRIPT_DIR}
+#Save the log file name:
+#Note: need 1 element array when using the wildcard (*) to initialize a variable
+#http://unix.stackexchange.com/questions/213812/parameter-expansion-in-variable-assigned-with-a-wildcard
+LOG_FILE=(*${Sample_ID}.o*)
+echo ${LOG_FILE}
+#---------------------------------------------------------------------------------
+#Move log file to this compute node
+mv ${LOG_FILE} ${TMPDIR}
+#cd back to compute node:
+cd ${TMPDIR}
+#---------------------------------------------------------------------------------
+#Parse this log file into 2 parts:
+#	1. Informative job log statements
+#	2. Uninformative warnings (compressed file)
+#---------------------------------------------------------------------------------
+#Use grep to search for unique string:
+grep '*****WARNING: Query' ${LOG_FILE} > ${LOG_FILE}'.warnings'
+#Compress the file:
+gzip ${LOG_FILE}'.warnings'
+#Remove warnings:
+grep -v '*****WARNING: Query' ${LOG_FILE} > ${LOG_FILE}'.new'
+#Replace the original log file
+mv ${LOG_FILE}'.new' ${LOG_FILE}
+#Copy log file(s) back to script dir
+cp *.o* ${SCRIPT_DIR}
+################################################################################
+
+echo
+echo "List files in scratch"
+echo
+ls -alh
+
+echo "=========================================================="
+echo "Finished on : $(date)"
+#Use to calculate job time:
+#End_Time in seconds
+End_Time=$(date +"%s")
+diff=$(($End_Time-$Start_Time))
+echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
+echo "=========================================================="
+echo "IAMOK"
