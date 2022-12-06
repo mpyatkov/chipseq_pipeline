@@ -19,12 +19,14 @@
 ##################################################################################
 #---------------------------------------------------------------------------------
 #Process system argument:
+set -e
+
 if [ $# -ne 1 ]
 then
-	echo "Usage: ./03_Run_Pipeline.sh <Start_Step>"
-	echo "<Start_Step> = Needs to be either \"Full_Pipeline\" or a specific pipeline step"
-	echo "See 03_Run_Pipeline.sh for details."	
-	exit 
+    echo "Usage: ./03_Run_Pipeline.sh <Start_Step>"
+    echo "<Start_Step> = Needs to be either \"Full_Pipeline\" or a specific pipeline step"
+    echo "See 03_Run_Pipeline.sh for details."	
+    exit 
 fi
 Start_Step=$1
 #---------------------------------------------------------------------------------
@@ -46,31 +48,31 @@ Scripts_DIR=$(pwd)
 #Start If statement for ${Start_Step}
 if [ ${Start_Step} == "Full_Pipeline" ]
 then
-	#For the 01_Rename_Folders - I just want to run this step and move to the rest of the pipeline
-	Step_DIR=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/Rename_Folders/p')
-	echo '#--------------------------------------------------------------------------'
-	echo 'Running: '${Step_DIR}'...' 
-	echo '#--------------------------------------------------------------------------'
-	#Run the step:
-	cd ${Step_DIR}
-	./Rename_Folders.sh
-	cd ..
-	echo '#--------------------------------------------------------------------------'
-	echo 'Done: '${Step_DIR}
-	echo '#--------------------------------------------------------------------------'
-	#--------------------------------------------------------------------------------
-	#Full list (omit the 1st blank line):
-	#ls -l | awk 'FNR>1 {print $9}'
-	#http://www.tutorialspoint.com/unix/unix-regular-expressions.htm
-	#http://www.grymoire.com/Unix/Sed.html
-	#Need the -n option:
-	#The "-n" option will not print anything unless an explicit request to print is found. 
-	#The pattern is a 2-digit number and then a bunch of characters
-	#Add sed command for regular expression (2-digit number at the beginning):
-	Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d')
-	#For loop over steps in the pipeline
-	for step in ${Pipeline_Steps}
-	do
+    #For the 01_Rename_Folders - I just want to run this step and move to the rest of the pipeline
+    Step_DIR=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/Rename_Folders/p')
+    echo '#--------------------------------------------------------------------------'
+    echo 'Running: '${Step_DIR}'...' 
+    echo '#--------------------------------------------------------------------------'
+    #Run the step:
+    # cd ${Step_DIR}
+    # ./Rename_Folders.sh
+    # cd ..
+    # echo '#--------------------------------------------------------------------------'
+    # echo 'Done: '${Step_DIR}
+    # echo '#--------------------------------------------------------------------------'
+    # #--------------------------------------------------------------------------------
+    #Full list (omit the 1st blank line):
+    #ls -l | awk 'FNR>1 {print $9}'
+    #http://www.tutorialspoint.com/unix/unix-regular-expressions.htm
+    #http://www.grymoire.com/Unix/Sed.html
+    #Need the -n option:
+    #The "-n" option will not print anything unless an explicit request to print is found. 
+    #The pattern is a 2-digit number and then a bunch of characters
+    #Add sed command for regular expression (2-digit number at the beginning):
+    Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d')
+    #For loop over steps in the pipeline
+    for step in ${Pipeline_Steps}
+    do
 	echo '#--------------------------------------------------------------------------'
 	echo 'Running: '${step}'...' 
 	echo '#--------------------------------------------------------------------------'
@@ -111,9 +113,9 @@ then
 	#Use a while loop to check ${Job_Count}
 	while [ ${Job_Count} -ne 0 ]
 	do
-		#Wait 01 minute then check ${Job_Count} again
-		sleep 1m
-		Job_Count=$(qstat -r -u ${BU_User} | grep 'Full jobname:' | grep ${Job_Name} | wc -l)
+	    #Wait 01 minute then check ${Job_Count} again
+	    sleep 1m
+	    Job_Count=$(qstat -r -u ${BU_User} | grep 'Full jobname:' | grep ${Job_Name} | wc -l)
 	done
 	#--------------------------------------------------------------------------------
 	#Summarize_Jobs:
@@ -122,36 +124,36 @@ then
 	echo 'Done: '${step}
 	echo '#--------------------------------------------------------------------------'
 	cd ..
-	done
-	#--------------------------------------------------------------------------------
-	#For the 12_Generate_Tracks - I just want to run this step 
-	Step_DIR=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/Generate_Tracks/p')
-	echo '#--------------------------------------------------------------------------'
-	echo 'Running: '${Step_DIR}'...' 
-	echo '#--------------------------------------------------------------------------'
-	#Run the step:
-	cd ${Step_DIR}
-	./Generate_Tracks.sh
-	cd ..
-	echo '#--------------------------------------------------------------------------'
-	echo 'Done: '${Step_DIR}
-	echo '#--------------------------------------------------------------------------'
-#End of If statement for ${Start_Step}
+    done
+    #--------------------------------------------------------------------------------
+    #For the 12_Generate_Tracks - I just want to run this step 
+    Step_DIR=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/Generate_Tracks/p')
+    echo '#--------------------------------------------------------------------------'
+    echo 'Running: '${Step_DIR}'...' 
+    echo '#--------------------------------------------------------------------------'
+    #Run the step:
+    cd ${Step_DIR}
+    ./Generate_Tracks.sh
+    cd ..
+    echo '#--------------------------------------------------------------------------'
+    echo 'Done: '${Step_DIR}
+    echo '#--------------------------------------------------------------------------'
+    #End of If statement for ${Start_Step}
 fi
 ##################################################################################
 #Start If statement for ${Start_Step}
 if [ ${Start_Step} != "Full_Pipeline" ]
 then
-	#At the very least the user will be skipping 01_Rename_Folders (already omitted)
-	#Only print steps after (but including) ${Start_Step}
-	#http://stackoverflow.com/questions/7103531/how-to-get-the-part-of-file-after-the-line-that-matches-grep-expression-first
-	#Need: sed -n -e '/TERMINATE/,$p'
-	#If using variable within sed command need to enclose the variable in single quotes
-	Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d' | sed -n -e '/'${Start_Step}'/,$p')
-	#Now the pipeline will start at ${Start_Step} and continue to the end
-	#For loop over steps in the pipeline
-	for step in ${Pipeline_Steps}
-	do
+    #At the very least the user will be skipping 01_Rename_Folders (already omitted)
+    #Only print steps after (but including) ${Start_Step}
+    #http://stackoverflow.com/questions/7103531/how-to-get-the-part-of-file-after-the-line-that-matches-grep-expression-first
+    #Need: sed -n -e '/TERMINATE/,$p'
+    #If using variable within sed command need to enclose the variable in single quotes
+    Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d' | sed -n -e '/'${Start_Step}'/,$p')
+    #Now the pipeline will start at ${Start_Step} and continue to the end
+    #For loop over steps in the pipeline
+    for step in ${Pipeline_Steps}
+    do
 	echo '#--------------------------------------------------------------------------'
 	echo 'Running: '${step}'...' 
 	echo '#--------------------------------------------------------------------------'
@@ -192,9 +194,9 @@ then
 	#Use a while loop to check ${Job_Count}
 	while [ ${Job_Count} -ne 0 ]
 	do
-		#Wait 01 minute then check ${Job_Count} again
-		sleep 1m
-		Job_Count=$(qstat -r -u ${BU_User} | grep 'Full jobname:' | grep ${Job_Name} | wc -l)
+	    #Wait 01 minute then check ${Job_Count} again
+	    sleep 1m
+	    Job_Count=$(qstat -r -u ${BU_User} | grep 'Full jobname:' | grep ${Job_Name} | wc -l)
 	done
 	#--------------------------------------------------------------------------------
 	#Summarize_Jobs:
@@ -203,21 +205,21 @@ then
 	echo 'Done: '${step}
 	echo '#--------------------------------------------------------------------------'
 	cd ..
-	done
-	#--------------------------------------------------------------------------------
-	#For the 12_Generate_Tracks - I just want to run this step 
-	Step_DIR=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/Generate_Tracks/p')
-	echo '#--------------------------------------------------------------------------'
-	echo 'Running: '${Step_DIR}'...' 
-	echo '#--------------------------------------------------------------------------'
-	#Run the step:
-	cd ${Step_DIR}
-	./Generate_Tracks.sh
-	cd ..
-	echo '#--------------------------------------------------------------------------'
-	echo 'Done: '${Step_DIR}
-	echo '#--------------------------------------------------------------------------'
-#End of If statement for ${Start_Step}
+    done
+    #--------------------------------------------------------------------------------
+    #For the 12_Generate_Tracks - I just want to run this step 
+    Step_DIR=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/Generate_Tracks/p')
+    echo '#--------------------------------------------------------------------------'
+    echo 'Running: '${Step_DIR}'...' 
+    echo '#--------------------------------------------------------------------------'
+    #Run the step:
+    cd ${Step_DIR}
+    ./Generate_Tracks.sh
+    cd ..
+    echo '#--------------------------------------------------------------------------'
+    echo 'Done: '${Step_DIR}
+    echo '#--------------------------------------------------------------------------'
+    #End of If statement for ${Start_Step}
 fi
 ##################################################################################
 echo '#--------------------------------------------------------------------------'
@@ -226,9 +228,9 @@ OUTPUT_FILE=${Setup_Pipeline_DIR}/Pipeline_Runtime.txt
 ######################
 if [ -f ${OUTPUT_FILE} ]
 then 
-rm ${OUTPUT_FILE}
+    rm ${OUTPUT_FILE}
 else
-touch ${OUTPUT_FILE}
+    touch ${OUTPUT_FILE}
 fi
 ######################
 #Print header to output file:
@@ -241,11 +243,11 @@ Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_S
 #For loop over steps in the pipeline
 for step in ${Pipeline_Steps}
 do
-#Print job runtimes to file
-cd ${step}
-echo ${step} >> ${OUTPUT_FILE}
-grep 'elapsed' *.o* >> ${OUTPUT_FILE}
-cd ..
+    #Print job runtimes to file
+    cd ${step}
+    echo ${step} >> ${OUTPUT_FILE}
+    grep 'elapsed' *.o* >> ${OUTPUT_FILE}
+    cd ..
 done
 #Also want to print the time to run this script:
 echo '#--------------------------------------------------------------' >> ${OUTPUT_FILE}

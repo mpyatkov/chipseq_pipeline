@@ -124,12 +124,12 @@ SCRIPT_DIR=$(pwd)
 #---------------------------------------------------------------------------------
 #Webserver location(s) for hosting files
 #Note: We are using the waxman-server mount point on the SCC
-VM_DIR_FASTQC=/net/waxman-server/mnt/data/waxmanlabvm_home/waxmanlab/FASTQC/${Dataset_Label}
+VM_DIR_FASTQC=/net/waxman-server/mnt/data/waxmanlabvm_home/${BU_User}/FASTQC/${Dataset_Label}
 VM_DIR_UCSC=/net/waxman-server/mnt/data/waxmanlabvm_home/${BU_User}/${Dataset_Label}
 #---------------------------------------------------------------------------------
 #Time hour limit
 #On SCC a 12-hour runtime limit is enforced on all jobs, unless specified explicitly. 
 #A runtime limit can be specified in the format "hh:mm:ss"
-TIME_LIMIT="96:00:00"
+TIME_LIMIT="24:00:00"
 #---------------------------------------------------------------------------------
 ##################################################################################

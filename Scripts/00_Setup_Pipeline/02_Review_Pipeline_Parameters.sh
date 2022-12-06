@@ -1,3 +1,4 @@
+set -eu
 ##################################################################################
 #Andy Rampersaud, 12.13.18
 #This 02_Review_Pipeline_Parameters.sh script is used to print all parameters used in the pipeline
@@ -18,6 +19,7 @@
 ##################################################################################
 #---------------------------------------------------------------------------------
 #Print header to output file:
+
 echo '###################################################################' 
 echo "List of Pipeline Parameters" 
 echo "Please check that the following parameters are correct before running the pipeline." 
@@ -28,11 +30,13 @@ echo "Pipeline version:"
 echo ${Pipeline_Version}
 echo 'Refer to Pipeline_Version_History.txt for details.'
 echo '###################################################################' 
+
 #---------------------------------------------------------------------------------
 #Source the setup file to initialize variables
 source ./01_Pipeline_Setup.sh
 #---------------------------------------------------------------------------------
 #Print variables to output file:
+
 echo '#--------------------------------------------------------------' 
 echo '"Global Variables"  = variables used by multiple steps' 
 echo '#--------------------------------------------------------------' 
@@ -44,14 +48,18 @@ echo 'VM_DIR_FASTQC='
 echo ${VM_DIR_FASTQC}
 echo '#--------------------------------------------------------------'
 echo 'Check if VM_DIR_FASTQC exists:'
+
+set +eu
 if ( [ -d ${VM_DIR_FASTQC} ] )
 then
-echo 'VM_DIR_FASTQC exists!'
+    echo 'VM_DIR_FASTQC exists!'
 else
-echo 'Need to create VM_DIR_FASTQC!'
-mkdir -p ${VM_DIR_FASTQC}
-echo 'Just created the remote directory.'
+    echo 'Need to create VM_DIR_FASTQC!'
+    mkdir -p ${VM_DIR_FASTQC}
+    echo 'Just created the remote directory.'
 fi
+set -eu
+
 echo '#--------------------------------------------------------------'
 echo 'Dataset_Label='
 echo ${Dataset_Label}
@@ -92,19 +100,22 @@ echo ${Sample_Labels_DIR}
 echo 'SCRIPT_DIR'
 echo ${SCRIPT_DIR}
 echo '#---------------------------'
+
 echo 'Job: UCSC_BigWig'
 echo 'VM_DIR_UCSC'
 echo ${VM_DIR_UCSC}
 echo '#--------------------------------------------------------------'
 echo 'Check if VM_DIR_UCSC exists:'
+set +eu
 if ( [ -d ${VM_DIR_UCSC} ] )
 then
-echo 'VM_DIR_UCSC_FASTQC exists!'
+    echo 'VM_DIR_UCSC_FASTQC exists!'
 else
-echo 'Need to create VM_DIR_UCSC!'
-mkdir -p ${VM_DIR_UCSC}
-echo 'Just created the remote directory.'
+    echo 'Need to create VM_DIR_UCSC!'
+    mkdir -p ${VM_DIR_UCSC}
+    echo 'Just created the remote directory.'
 fi
+set -eu
 echo '#--------------------------------------------------------------'
 echo '#---------------------------'
 echo 'TIME_LIMIT'
@@ -115,32 +126,32 @@ echo '#--------------------------------------------------------------'
 #---------------------------------------------------------------------------------
 #The Scripts folder is 1 level up from 00_Setup_Pipeline:
 #--------------------------------------------------------------------------------
-cd ..
-Scripts_DIR=$(pwd)
-#--------------------------------------------------------------------------------
-#Need a list of steps (same way in 03_Run_Pipeline.sh):
-Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | grep 'diffReps')
-#For loop over steps in the pipeline
-for step in ${Pipeline_Steps}
-do
-echo '#---------------------------'
-echo 'Job: '${step} 
-echo '#---------------------------'
-cd ${step}
-#Source the setup file to initialize variables
-source ./setup_diffReps.sh
-echo 'Control_Samples_NAME'
-echo ${Control_Samples_NAME}
-echo 'Treatment_Samples_NAME'
-echo ${Treatment_Samples_NAME}
-echo 'COMPAR_NUM'
-echo ${COMPAR_NUM}
-echo 'WINDOW_SIZE'
-echo ${WINDOW_SIZE}
-echo 'FRAG_SIZE'
-echo ${FRAG_SIZE}
-cd ${Scripts_DIR}
-done
+# cd ..
+# Scripts_DIR=$(pwd)
+# #--------------------------------------------------------------------------------
+# #Need a list of steps (same way in 03_Run_Pipeline.sh):
+# Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | grep 'diffReps')
+# #For loop over steps in the pipeline
+# for step in ${Pipeline_Steps}
+# do
+#     echo '#---------------------------'
+#     echo 'Job: '${step} 
+#     echo '#---------------------------'
+#     cd ${step}
+#     #Source the setup file to initialize variables
+#     source ./setup_diffReps.sh
+#     echo 'Control_Samples_NAME'
+#     echo ${Control_Samples_NAME}
+#     echo 'Treatment_Samples_NAME'
+#     echo ${Treatment_Samples_NAME}
+#     echo 'COMPAR_NUM'
+#     echo ${COMPAR_NUM}
+#     echo 'WINDOW_SIZE'
+#     echo ${WINDOW_SIZE}
+#     echo 'FRAG_SIZE'
+#     echo ${FRAG_SIZE}
+#     cd ${Scripts_DIR}
+# done
 echo '#--------------------------------------------------------------'
 echo 'Generate_Tracks:'
 echo 'No parameters to print.'
