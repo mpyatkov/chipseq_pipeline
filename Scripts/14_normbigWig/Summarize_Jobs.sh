@@ -88,7 +88,9 @@ cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/normbigWig/*.bw ${VM_DIR_UCSC}
 #macs2:
 cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/$Sample_ID'_MACS2_output'/*.bb ${VM_DIR_UCSC}
 #SICER:
+set +eu
 cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/$Sample_ID'_SICER_output'/*.bb ${VM_DIR_UCSC}
+set -eu
 #---------------------------------------------------------------------------------
 done < Sample_Labels.temp
 #Remove the temp file:

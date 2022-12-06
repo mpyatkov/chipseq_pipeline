@@ -131,14 +131,18 @@ echo 'track type=bigWig name="'${Sample_ID}'_RiPPM_norm" description="'${Descrip
 #---------------------------------------------------------------------------------
 #Make bigBed tracks (peaks):
 #macs2:
-echo 'track type=bigBed name="'${Sample_ID}'_MACS2_narrowPeak_peaks" description="'${Sample_ID}'_MACS2_narrowPeak_peaks" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/kkarri/tingyac/'${Dataset_Label}'/'${Sample_ID}'_MACS2_peaks.narrowPeak.bb'
+echo "track type=bigBed name=\"${Sample_ID}_MACS2_narrowPeak_peaks\" description=\"${Sample_ID}_MACS2_narrowPeak_peaks\" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/${BU_User}/${Dataset_Label}/${Sample_ID}_MACS2_peaks.narrowPeak.bb"
 #---------------------------------------------------------------------------------
 #SICER:
-cd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-#General way to refer to the main output file
-Peaks_Called_File=$(ls *.bb)
-echo 'track type=bigBed name="'${Sample_ID}'_SICER" description="'${Sample_ID}'_SICER" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Peaks_Called_File}
-cd ${SCRIPT_DIR}
+if [ -d "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" ]
+then
+    cd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+    #General way to refer to the main output file
+    Peaks_Called_File=$(ls *.bb)
+    echo 'track type=bigBed name="'${Sample_ID}'_SICER" description="'${Sample_ID}'_SICER" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Peaks_Called_File}
+    cd ${SCRIPT_DIR}
+fi
+
 #---------------------------------------------------------------------------------
 #Make BAM tracks (reads):
 #---------------------------
@@ -251,11 +255,17 @@ echo 'track type=bigWig name="'${Sample_ID}'_RiPPM_norm" description="'${Descrip
 echo 'track type=bigBed name="'${Sample_ID}'_MACS2_narrowPeak_peaks" description="'${Sample_ID}'_MACS2_narrowPeak_peaks" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Sample_ID}'_MACS2_peaks.narrowPeak.bb'
 #---------------------------------------------------------------------------------
 #SICER:
-cd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-#General way to refer to the main output file
-Peaks_Called_File=$(ls *.bb)
-echo 'track type=bigBed name="'${Sample_ID}'_SICER" description="'${Sample_ID}'_SICER" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Peaks_Called_File}
-cd ${SCRIPT_DIR}
+
+if [ -d "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" ]
+then
+
+    cd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+    #General way to refer to the main output file
+    Peaks_Called_File=$(ls *.bb)
+    echo 'track type=bigBed name="'${Sample_ID}'_SICER" description="'${Sample_ID}'_SICER" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Peaks_Called_File}
+    cd ${SCRIPT_DIR}
+fi
+
 #---------------------------------------------------------------------------------
 #Make BAM tracks (reads):
 #---------------------------
@@ -367,11 +377,15 @@ echo 'track type=bigWig name="'${Sample_ID}'_RiPPM_norm" description="'${Descrip
 echo 'track type=bigBed name="'${Sample_ID}'_MACS2_narrowPeak_peaks" description="'${Sample_ID}'_MACS2_narrowPeak_peaks" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Sample_ID}'_MACS2_peaks.narrowPeak.bb'
 #---------------------------------------------------------------------------------
 #SICER:
-cd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-#General way to refer to the main output file
-Peaks_Called_File=$(ls *.bb)
-echo 'track type=bigBed name="'${Sample_ID}'_SICER" description="'${Sample_ID}'_SICER" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Peaks_Called_File}
-cd ${SCRIPT_DIR}
+if [ -d "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" ]
+then
+    cd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+    #General way to refer to the main output file
+    Peaks_Called_File=$(ls *.bb)
+    echo 'track type=bigBed name="'${Sample_ID}'_SICER" description="'${Sample_ID}'_SICER" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Peaks_Called_File}
+    cd ${SCRIPT_DIR}
+fi
+
 #---------------------------------------------------------------------------------
 #Make BAM tracks (reads):
 #---------------------------
@@ -400,3 +414,5 @@ echo 'Check out '${OUTPUT_FILE_Wiggle}
 echo 'Check out '${OUTPUT_FILE_Wiggle_autoON}
 echo '#---------------------------------------------------------------------------'
 ##################################################################################
+
+cp -a UCSC_Track_Lines ${VM_DIR_UCSC}/

@@ -13,8 +13,8 @@ set -eu
 count=`ls -1 *.o* 2>/dev/null  | wc -l`
 if [ $count != 0 ]
 then 
-rm *.o*
-rm *.e*
+    rm -rf *.o*
+    rm -rf *.e*
 fi 
 ##################################################################################
 #---------------------------------------------------------------------------------
@@ -79,22 +79,22 @@ tail -n +2 Sample_Labels.txt > Sample_Labels.temp
 #Use a while loop to run jobs
 while IFS=$'\t' read -r -a myArray
 do
-#---------------------------
-##Check that text file is read in properly:
-#echo 'Sample_DIR:'
-Sample_DIR=${myArray[0]}
-#echo 'Sample_ID:'
-Sample_ID=${myArray[1]}
-#echo $Sample_ID
-#echo 'Description:'
-Description=${myArray[2]}
-#echo $Description
-#---------------------------
-#Now use arguments in the PBS script call:
-	qsub -N ${Job_Name}'_'${Sample_ID} -P wax-es -l h_rt=${TIME_LIMIT} normbigWig.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${SCRIPT_DIR} ${BU_User} ${VM_DIR_UCSC}
-#Printing the qsub command which submits the job
-	echo "qsub -N ${Job_Name}'_'${Sample_ID} -P wax-es -l h_rt=${TIME_LIMIT} normbigWig.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${SCRIPT_DIR} ${BU_User} ${VM_DIR_UCSC}"
-#---------------------------
+    #---------------------------
+    ##Check that text file is read in properly:
+    #echo 'Sample_DIR:'
+    Sample_DIR=${myArray[0]}
+    #echo 'Sample_ID:'
+    Sample_ID=${myArray[1]}
+    #echo $Sample_ID
+    #echo 'Description:'
+    Description=${myArray[2]}
+    #echo $Description
+    #---------------------------
+    #Now use arguments in the PBS script call:
+    qsub -N ${Job_Name}'_'${Sample_ID} -P wax-es -l h_rt=${TIME_LIMIT} normbigWig.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${SCRIPT_DIR} ${BU_User} ${VM_DIR_UCSC}
+    #Printing the qsub command which submits the job
+    echo "qsub -N ${Job_Name}'_'${Sample_ID} -P wax-es -l h_rt=${TIME_LIMIT} normbigWig.qsub ${Sample_ID} ${Dataset_DIR} ${Sample_Labels_DIR} ${SCRIPT_DIR} ${BU_User} ${VM_DIR_UCSC}"
+    #---------------------------
 done < Sample_Labels.temp
 #Remove the temp file:
 rm Sample_Labels.temp

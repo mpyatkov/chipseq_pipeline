@@ -62,7 +62,8 @@ do
     #--------------------------------------------------------------------------------
 done
 echo 'End pre-process input BAM file'
-#--------------------------------------------------------------------------------
+
+
 cd ..
 #Now I have the following in the BAM_to_WIG folder:
 #genomeIndex  Input_files  UCSC_Tools
@@ -73,15 +74,25 @@ mkdir temp_bw
 #Generate list of input files, for each file execute genomeCoverageBed and put output file to temp_bedGraph folder
 echo 'Started genomeCoverageBed'
 cd Input_files
-Input_list=*.bam
-for file in $Input_list
-do
-    Sample_ID=${file%\_sorted_mapped.bam};
-    #http://bedtools.readthedocs.io/en/latest/content/tools/genomecov.html
-    #Use the (-i) option for BED/GFF/VCF files
-    #Use the (-ibam) option for BAM files
-    genomeCoverageBed -bg -ibam $file -g ../genomeIndex/mm9.chrom.sizes > ../temp_bedGraph/${Sample_ID}'.bedGraph'
-done
+echo "cd Input_files"
+ls -l
+
+## There are two different ways how we can create bigwig files (from
+## fragments and from reads) From fragments way is more correct, but
+## if you prefer to use reads just comment (FOR FRAGMENTS) part and
+## uncomment (FOR READS) part, it will also work.
+
+## FOR FRAGMENTS 
+genomeCoverageBed -bg -i "${Sample_ID}_fragments.bed" -g ../genomeIndex/mm9.chrom.sizes > ../temp_bedGraph/"${Sample_ID}.bedGraph"
+
+## FOR READS
+# Input_list=*.bam
+# for file in $Input_list
+# do
+#     Sample_ID=${file%\_sorted_mapped.bam};
+#     genomeCoverageBed -bg -ibam $file -g ../genomeIndex/mm9.chrom.sizes > ../temp_bedGraph/${Sample_ID}'.bedGraph'
+# done
+
 cd ..
 echo 'Finished genomeCoverageBed'
 #The above works for generating bedGraph files for each input file

@@ -244,7 +244,7 @@ cp -r ${SCRIPT_DIR}/Job_Scripts/R_Markdown/* ${OUTPUT_DIR}
 #Some libraries were recompiled and some packages in R now require gcc to be loaded.
 module load gcc/7.4.0
 module load R
-module load texlive
+module load texlive/2018
 module load pandoc/2.2.1
 cd ${OUTPUT_DIR}
 Rscript -e 'rmarkdown::render("Peak_Union_Count_Stats.Rmd")'

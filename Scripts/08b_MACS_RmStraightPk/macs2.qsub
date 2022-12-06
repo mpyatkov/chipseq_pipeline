@@ -145,9 +145,9 @@ module load R/3.6.0
 #cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_alignments.bam' .
 #---------------------------------------------------------------------------------
 #Should use the *_sorted_mapped.bam from the *_BAM_Count job
-cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/StrgtPksRm/${Sample_ID}'_sorted_mapped.bam' .
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_sorted_mapped.bam' .
 #Should use the *_fragments.bed.gz from the *_BAM_Count job
-cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/StrgtPksRm/${Sample_ID}'_fragments.bed.gz' .
+cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_fragments.bed.gz' .
 #---------------------------------------------------------------------------------
 #Copy peak width scripts to scratch dir
 JOB_SCRIPT_DIR=${SCRIPT_DIR}/Job_Scripts
