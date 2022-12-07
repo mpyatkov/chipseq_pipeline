@@ -12,9 +12,9 @@
 #"Global Variables"  = variables used by multiple steps
 #---------------------------------------------------------------------------------
 ##changed the directory path, BU_User and Dataset_Label
-Dataset_DIR=/projectnb/wax-es/test_DNAChIP
+Dataset_DIR=/projectnb2/wax-dk/max/G196
 BU_User="mpyatkov"
-Dataset_Label="G182"
+Dataset_Label="G196"
 GTF_Files_DIR=/projectnb/wax-es/aramp10/GTF_Files
 #---------------------------------------------------------------------------------
 ##################################################################################

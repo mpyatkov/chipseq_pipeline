@@ -1,3 +1,0 @@
-Sample_DIR	Sample_ID	Description
-G182_M1	G182_M1	CTCF_Control
-G182_M2	G182_M2	CTCF_TCPOBOP_1mg
