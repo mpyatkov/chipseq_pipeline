@@ -1,0 +1,5 @@
+fd -e bed narrowPeak ../ | grep -v Scripts | grep -v blacklist | grep -v StrgtPksRm | xargs -n1 -I{} cp {} ./
+cat G196_M9_MACS2_peaks.narrowPeak.bed G196_M10_MACS2_peaks.narrowPeak.bed G196_M11_MACS2_peaks.narrowPeak.bed G196_M12_MACS2_peaks.narrowPeak.bed G196_M13_MACS2_peaks.narrowPeak.bed G196_M14_MACS2_peaks.narrowPeak.bed > combined.bed
+sort -k1,1 -k2,2n combined.bed > combined.sorted.bed
+bedtools merge -i combined.sorted.bed > combined.sorted.merged.bed
+./run.sh
