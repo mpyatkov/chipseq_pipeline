@@ -8,16 +8,17 @@ set -eu
 #Example: 
 #./diffReps.sh 
 ##################################################################################
+
 #Remove *.o* files from previous jobs
 #Need the 2>/dev/null to supress the "No such file or directory"
 count=`ls -1 *.o* 2>/dev/null  | wc -l`
 if [ $count != 0 ]
 then 
-rm *.o*
-#Remove previous diffReps output folders
-rm -r Output_*
-#Remove files from using multiple cores
-rm *.po*
+    rm -rf *.o*
+    #Remove previous diffReps output folders
+    rm -rf Output_*
+    #Remove files from using multiple cores
+    rm -rf *.po*
 fi 
 ##################################################################################
 #---------------------------------------------------------------------------------
@@ -67,8 +68,8 @@ echo "-----------------------"
 echo "Start of qsub commands:"
 echo "-----------------------"
 ##################################################################################
-	#Now use arguments in the qsub script call:
-	qsub -N ${Job_Name}'_diffReps_'${COMPAR_NUM} -P wax-es -q !linga diffReps.qsub ${Dataset_DIR} ${Dataset_Label} ${Control_Samples_NAME} ${Treatment_Samples_NAME} ${COMPAR_NUM} ${WINDOW_SIZE} ${FRAG_SIZE} ${Input_Sites_RiPPM} ${SCRIPT_DIR}
-	#Printing the qsub command which submits the job
-	echo "qsub -N ${Job_Name}'_diffReps_'${COMPAR_NUM} -P wax-es -q !linga diffReps.qsub ${Dataset_DIR} ${Dataset_Label} ${Control_Samples_NAME} ${Treatment_Samples_NAME} ${COMPAR_NUM} ${WINDOW_SIZE} ${FRAG_SIZE} ${Input_Sites_RiPPM} ${SCRIPT_DIR}"
+#Now use arguments in the qsub script call:
+qsub -N ${Job_Name}'_diffReps_'${COMPAR_NUM} -P wax-es -q !linga diffReps.qsub ${Dataset_DIR} ${Dataset_Label} ${Control_Samples_NAME} ${Treatment_Samples_NAME} ${COMPAR_NUM} ${WINDOW_SIZE} ${FRAG_SIZE} ${Input_Sites_RiPPM} ${SCRIPT_DIR}
+#Printing the qsub command which submits the job
+echo "qsub -N ${Job_Name}'_diffReps_'${COMPAR_NUM} -P wax-es -q !linga diffReps.qsub ${Dataset_DIR} ${Dataset_Label} ${Control_Samples_NAME} ${Treatment_Samples_NAME} ${COMPAR_NUM} ${WINDOW_SIZE} ${FRAG_SIZE} ${Input_Sites_RiPPM} ${SCRIPT_DIR}"
 ##################################################################################

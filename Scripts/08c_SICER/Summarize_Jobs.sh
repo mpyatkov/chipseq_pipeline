@@ -50,12 +50,12 @@ OUTPUT_DIR=${SCRIPT_DIR}/Job_Summary
 #---------------------------------------------------------------------------------
 ###############################
 if [ ! -d ${OUTPUT_DIR} ]; then
-mkdir -p ${OUTPUT_DIR}
+    mkdir -p ${OUTPUT_DIR}
 else
-#Remove dir:
-rm -r ${OUTPUT_DIR}
-#Make new dir:
-mkdir -p ${OUTPUT_DIR}
+    #Remove dir:
+    rm -r ${OUTPUT_DIR}
+    #Make new dir:
+    mkdir -p ${OUTPUT_DIR}
 fi
 ###############################
 OUTPUT_FILE=$OUTPUT_DIR/SICER_Stats.txt
@@ -64,17 +64,17 @@ OUTPUT_FILE_2=$OUTPUT_DIR/SICER_Peak_Width.txt
 ######################
 if [ -f $OUTPUT_FILE ]
 then 
-rm $OUTPUT_FILE
+    rm $OUTPUT_FILE
 else
-touch $OUTPUT_FILE
+    touch $OUTPUT_FILE
 fi
 ######################
 ######################
 if [ -f $OUTPUT_FILE_2 ]
 then 
-rm $OUTPUT_FILE_2
+    rm $OUTPUT_FILE_2
 else
-touch $OUTPUT_FILE_2
+    touch $OUTPUT_FILE_2
 fi
 ######################
 #---------------------------------------------------------------------------------
@@ -82,9 +82,9 @@ Overlap_Summary=$OUTPUT_DIR/ENCODE_Blacklist_Overlap_Summary.txt
 ######################
 if [ -f $Overlap_Summary ]
 then 
-rm $Overlap_Summary
+    rm $Overlap_Summary
 else
-touch $Overlap_Summary
+    touch $Overlap_Summary
 fi
 ######################
 #---------------------------------------------------------------------------------
@@ -117,79 +117,79 @@ tail -n +2 Sample_Labels.txt > Sample_Labels.temp
 #Use a while loop to run jobs
 while IFS=$'\t' read -r -a myArray
 do
-#---------------------------
-##Check that text file is read in properly:
-#echo 'Sample_DIR:'
-Sample_DIR=${myArray[0]}
-#echo 'Sample_ID:'
-Sample_ID=${myArray[1]}
-#echo $Sample_ID
-#echo 'Description:'
-Description=${myArray[2]}
-#echo $Description
-#---------------------------
-echo ${Sample_ID}
-###############################################
-#SICER_Stats
-###############################################
-echo 'Getting read count...'
-#For single-end data search for: "# total tags in treatment:"
-#For paired-end data search for: "total fragments in treatment:"
-#---------------------------------------------------------------------------------
-#I need a way to count the total number of reads
-#Save the line count of the fragments BED file
-#Search the job log file
-#---------------------------------------------------------------------------------
-cd ${SCRIPT_DIR}
-#Search for echo statement and extract the line after the match:
-FRAGMENT_COUNT=$(grep -A 1 'Line count of fragments BED file:' *${Sample_ID}'.o'* | awk 'FNR==2{print $0}')
-#---------------------------------------------------------------------------------
-cd $DATA_DIR
-cd ${Sample_ID}
-cd fastq
-cd bowtie2
-#---------------------------
-cd ${Sample_ID}'_SICER_output'
-#---------------------------
-echo 'Calculating peak count...'
-#General way to refer to the main output file
-Peaks_Called_File=$(ls *.scoreisland)
-Peak_count=$(wc -l < ${Peaks_Called_File})
-echo 'Calculating read in peak count...'
-FRAGMENT_IN_PEAK_COUNT=$(awk '{n+=$5;} ; END {print n;}' ${Sample_ID}'_read_SICER.out1')
-echo 'Calculating read in peak ratio...'
-FRAGMENT_IN_PEAK_RATIO=$(echo "scale=4;$FRAGMENT_IN_PEAK_COUNT/$FRAGMENT_COUNT" | bc)
-echo 'Printing peak width distribution...'
-#Only print the 2nd line of the text file:
-awk 'FNR==2 {print $0}' ${Sample_ID}*'_Width_Stats.txt' >> $OUTPUT_FILE_2
-#---------------------------------------------------------------------------------
-echo 'Calculating the ratio of genome covered...'
-peak_width_sum=$(awk '{peak_width_sum+=$3 - $2;} ; END {print peak_width_sum;}' ${Peaks_Called_File})
-#For macs2 (mm:	1.87e9):
-#https://github.com/taoliu/MACS
-#Definition:
-#It's the mappable genome size or effective genome size which is defined as the genome size which can be sequenced. Because of the repetitive features on the chromsomes, the actual mappable genome size will be smaller than the original size, about 90% or 70% of the genome size. The default hs — 2.7e9 is recommended for UCSC human hg18 assembly. Here are all precompiled parameters for effective genome size
-#https://www.biostars.org/p/19380/
-#macs2 README:
-#http://liulab.dfci.harvard.edu/MACS/00README.html
-Effective_Genome_Size=1870000000
-Ratio_Genome_Covered=$(echo "scale=4;${peak_width_sum} /${Effective_Genome_Size}" | bc)
-#---------------------------------------------------------------------------------
-echo 'Summarizing overlap comparisons:'
-#---------------------------------------------------------------------------------
-folder_list=*_Output
-for folder in $folder_list
-do
-echo $folder
-sed -n '1,5p' $folder/Overlap_Summary.txt >> $Overlap_Summary
-echo >> $Overlap_Summary
-done
-#---------------------------------------------------------------------------------
-###############################################
-echo 'Printing to output file'
-echo
-echo ${Sample_ID} $'\t'$Description $'\t'$FRAGMENT_COUNT $'\t'$Peak_count $'\t'$FRAGMENT_IN_PEAK_COUNT $'\t'$FRAGMENT_IN_PEAK_RATIO $'\t' ${Ratio_Genome_Covered} >> $OUTPUT_FILE
-cd $DATA_DIR
+    #---------------------------
+    ##Check that text file is read in properly:
+    #echo 'Sample_DIR:'
+    Sample_DIR=${myArray[0]}
+    #echo 'Sample_ID:'
+    Sample_ID=${myArray[1]}
+    #echo $Sample_ID
+    #echo 'Description:'
+    Description=${myArray[2]}
+    #echo $Description
+    #---------------------------
+    echo ${Sample_ID}
+    ###############################################
+    #SICER_Stats
+    ###############################################
+    echo 'Getting read count...'
+    #For single-end data search for: "# total tags in treatment:"
+    #For paired-end data search for: "total fragments in treatment:"
+    #---------------------------------------------------------------------------------
+    #I need a way to count the total number of reads
+    #Save the line count of the fragments BED file
+    #Search the job log file
+    #---------------------------------------------------------------------------------
+    cd ${SCRIPT_DIR}
+    #Search for echo statement and extract the line after the match:
+    FRAGMENT_COUNT=$(grep -A 1 'Line count of fragments BED file:' *${Sample_ID}'.o'* | awk 'FNR==2{print $0}')
+    #---------------------------------------------------------------------------------
+    cd $DATA_DIR
+    cd ${Sample_ID}
+    cd fastq
+    cd bowtie2
+    #---------------------------
+    cd ${Sample_ID}'_SICER_output'
+    #---------------------------
+    echo 'Calculating peak count...'
+    #General way to refer to the main output file
+    Peaks_Called_File=$(ls *.scoreisland)
+    Peak_count=$(wc -l < ${Peaks_Called_File})
+    echo 'Calculating read in peak count...'
+    FRAGMENT_IN_PEAK_COUNT=$(awk '{n+=$5;} ; END {print n;}' ${Sample_ID}'_read_SICER.out1')
+    echo 'Calculating read in peak ratio...'
+    FRAGMENT_IN_PEAK_RATIO=$(echo "scale=4;$FRAGMENT_IN_PEAK_COUNT/$FRAGMENT_COUNT" | bc)
+    echo 'Printing peak width distribution...'
+    #Only print the 2nd line of the text file:
+    awk 'FNR==2 {print $0}' ${Sample_ID}*'_Width_Stats.txt' >> $OUTPUT_FILE_2
+    #---------------------------------------------------------------------------------
+    echo 'Calculating the ratio of genome covered...'
+    peak_width_sum=$(awk '{peak_width_sum+=$3 - $2;} ; END {print peak_width_sum;}' ${Peaks_Called_File})
+    #For macs2 (mm:	1.87e9):
+    #https://github.com/taoliu/MACS
+    #Definition:
+    #It's the mappable genome size or effective genome size which is defined as the genome size which can be sequenced. Because of the repetitive features on the chromsomes, the actual mappable genome size will be smaller than the original size, about 90% or 70% of the genome size. The default hs — 2.7e9 is recommended for UCSC human hg18 assembly. Here are all precompiled parameters for effective genome size
+    #https://www.biostars.org/p/19380/
+    #macs2 README:
+    #http://liulab.dfci.harvard.edu/MACS/00README.html
+    Effective_Genome_Size=1870000000
+    Ratio_Genome_Covered=$(echo "scale=4;${peak_width_sum} /${Effective_Genome_Size}" | bc)
+    #---------------------------------------------------------------------------------
+    echo 'Summarizing overlap comparisons:'
+    #---------------------------------------------------------------------------------
+    folder_list=*_Output
+    for folder in $folder_list
+    do
+	echo $folder
+	sed -n '1,5p' $folder/Overlap_Summary.txt >> $Overlap_Summary
+	echo >> $Overlap_Summary
+    done
+    #---------------------------------------------------------------------------------
+    ###############################################
+    echo 'Printing to output file'
+    echo
+    echo ${Sample_ID} $'\t'$Description $'\t'$FRAGMENT_COUNT $'\t'$Peak_count $'\t'$FRAGMENT_IN_PEAK_COUNT $'\t'$FRAGMENT_IN_PEAK_RATIO $'\t' ${Ratio_Genome_Covered} >> $OUTPUT_FILE
+    cd $DATA_DIR
 done < Sample_Labels.temp
 #Remove the temp file:
 cd ${SCRIPT_DIR}
@@ -205,12 +205,12 @@ OUTPUT_DIR_2=${OUTPUT_DIR}/Chr_Peak_Counts
 ######################
 if [ ! -d ${OUTPUT_DIR_2} ]
 then 
-mkdir ${OUTPUT_DIR_2}
+    mkdir ${OUTPUT_DIR_2}
 else
-#Remove dir:
-rm -r ${OUTPUT_DIR_2}
-#Make new dir:
-mkdir -p ${OUTPUT_DIR_2}
+    #Remove dir:
+    rm -r ${OUTPUT_DIR_2}
+    #Make new dir:
+    mkdir -p ${OUTPUT_DIR_2}
 fi
 ######################
 cd ${OUTPUT_DIR_2}
@@ -237,26 +237,26 @@ tail -n +2 Sample_Labels.txt > Sample_Labels.temp
 #Use a while loop to run jobs
 while IFS=$'\t' read -r -a myArray
 do
-#---------------------------
-##Check that text file is read in properly:
-#echo 'Sample_DIR:'
-Sample_DIR=${myArray[0]}
-#echo 'Sample_ID:'
-Sample_ID=${myArray[1]}
-#echo $Sample_ID
-#echo 'Description:'
-Description=${myArray[2]}
-#echo $Description
-#---------------------------
-echo ${Sample_ID}
-#Copy each sample's *.scoreisland file to ${OUTPUT_DIR_2}:
-cd ${DATA_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-#General way to refer to the main output file
-Peaks_Called_File=$(ls *.scoreisland)
-#Note: the Chr_Peak_Counts.sh looks for a .bed extension
-cp ${Peaks_Called_File} ${OUTPUT_DIR_2}/${Peaks_Called_File}'.bed'
-cd ${OUTPUT_DIR_2}
-#---------------------------
+    #---------------------------
+    ##Check that text file is read in properly:
+    #echo 'Sample_DIR:'
+    Sample_DIR=${myArray[0]}
+    #echo 'Sample_ID:'
+    Sample_ID=${myArray[1]}
+    #echo $Sample_ID
+    #echo 'Description:'
+    Description=${myArray[2]}
+    #echo $Description
+    #---------------------------
+    echo ${Sample_ID}
+    #Copy each sample's *.scoreisland file to ${OUTPUT_DIR_2}:
+    cd ${DATA_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+    #General way to refer to the main output file
+    Peaks_Called_File=$(ls *.scoreisland)
+    #Note: the Chr_Peak_Counts.sh looks for a .bed extension
+    cp ${Peaks_Called_File} ${OUTPUT_DIR_2}/${Peaks_Called_File}'.bed'
+    cd ${OUTPUT_DIR_2}
+    #---------------------------
 done < Sample_Labels.temp
 cd ${OUTPUT_DIR_2}
 #Remove the temp file:
@@ -286,9 +286,9 @@ echo
 Peaks_Called_DIR=${OUTPUT_DIR}/Peaks_Called
 #Using an if statement to make the output folder if it does not exists
 if [ ! -d ${Peaks_Called_DIR} ]; then
-mkdir ${Peaks_Called_DIR}; 
+    mkdir ${Peaks_Called_DIR}; 
 else
-rm ${Peaks_Called_DIR}/*
+    rm ${Peaks_Called_DIR}/*
 fi
 #---------------------------------------------------------------------------------
 echo
@@ -315,25 +315,25 @@ tail -n +2 Sample_Labels.txt > Sample_Labels.temp
 #Use a while loop to run jobs
 while IFS=$'\t' read -r -a myArray
 do
-#---------------------------
-##Check that text file is read in properly:
-#echo 'Sample_DIR:'
-Sample_DIR=${myArray[0]}
-#echo 'Sample_ID:'
-Sample_ID=${myArray[1]}
-#echo $Sample_ID
-#echo 'Description:'
-Description=${myArray[2]}
-#echo $Description
-#---------------------------
-#Copy sample-specific sample peak files 
-cd ${DATA_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-#General way to refer to the main output file
-Peaks_Called_File=$(ls *.scoreisland)
-#Note: the Chr_Peak_Counts.sh looks for a .bed extension
-cp ${Peaks_Called_File}  ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
-cd ${OUTPUT_DIR}
-#---------------------------
+    #---------------------------
+    ##Check that text file is read in properly:
+    #echo 'Sample_DIR:'
+    Sample_DIR=${myArray[0]}
+    #echo 'Sample_ID:'
+    Sample_ID=${myArray[1]}
+    #echo $Sample_ID
+    #echo 'Description:'
+    Description=${myArray[2]}
+    #echo $Description
+    #---------------------------
+    #Copy sample-specific sample peak files 
+    cd ${DATA_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+    #General way to refer to the main output file
+    Peaks_Called_File=$(ls *.scoreisland)
+    #Note: the Chr_Peak_Counts.sh looks for a .bed extension
+    cp ${Peaks_Called_File}  ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
+    cd ${OUTPUT_DIR}
+    #---------------------------
 done < Sample_Labels.temp
 #Remove the temp file:
 rm Sample_Labels.temp
@@ -345,10 +345,10 @@ rm Sample_Labels.txt
 Union_DIR=${Peaks_Called_DIR}/Peak_Union
 if [ ! -d ${Union_DIR} ]
 then 
-mkdir ${Union_DIR}
-touch ${Union_DIR}/temp.txt
+    mkdir ${Union_DIR}
+    touch ${Union_DIR}/temp.txt
 else
-touch ${Union_DIR}/temp.txt
+    touch ${Union_DIR}/temp.txt
 fi
 #---------------------------------------------
 echo 'Generate Peak_Union sites...'
@@ -362,9 +362,9 @@ file_list=*.bed
 echo 'Concatenating files ...'
 for file in $file_list
 do
-#echo $file
-cat $file ${Union_DIR}/temp.txt >> ${Union_DIR}/temp2.txt
-mv ${Union_DIR}/temp2.txt ${Union_DIR}/temp.txt
+    #echo $file
+    cat $file ${Union_DIR}/temp.txt >> ${Union_DIR}/temp2.txt
+    mv ${Union_DIR}/temp2.txt ${Union_DIR}/temp.txt
 done
 #Confirmed this worked:
 #echo 'Line count for temp.txt:'
@@ -396,15 +396,15 @@ cd ${OUTPUT_DIR}
 #---------------------------------------------------------------------------------
 if [ "${Input_Sites_RiPPM}" == "MACS2" ] ;
 then
-echo 'WARNING: ${Input_Sites_RiPPM} was set to MACS2.'
-echo 'Therefore, the Peak_Union.bed generated by this job (SICER) will not be used.'
-echo 'Please run the MACS2 job with the correspnding Summarize_Jobs.sh script to generate the appropriate Peak_Union.bed file.'
+    echo 'WARNING: ${Input_Sites_RiPPM} was set to MACS2.'
+    echo 'Therefore, the Peak_Union.bed generated by this job (SICER) will not be used.'
+    echo 'Please run the MACS2 job with the correspnding Summarize_Jobs.sh script to generate the appropriate Peak_Union.bed file.'
 fi
 #---------------------------------------------------------------------------------
 if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
 then
-RiPPM_Normalization_Job_Name=09_RiPPM_Normalization
-cp ${OUTPUT_DIR}/Peaks_Called/Peak_Union/Peak_Union.bed ../../${RiPPM_Normalization_Job_Name}/Peak_Union
+    RiPPM_Normalization_Job_Name=09_RiPPM_Normalization
+    cp ${OUTPUT_DIR}/Peaks_Called/Peak_Union/Peak_Union.bed ../../${RiPPM_Normalization_Job_Name}/Peak_Union
 fi
 #---------------------------------------------------------------------------------
 #Check if the ${Input_Sites_RiPPM} was set:
@@ -412,9 +412,9 @@ fi
 #I want to check if the variable does not match both values
 if [ "${Input_Sites_RiPPM}" != "MACS2" ] && [ "${Input_Sites_RiPPM}" != "SICER" ]
 then
-echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
-echo 'Zero input sites will be used for RiPPM normalization.'
-echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
+    echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
+    echo 'Zero input sites will be used for RiPPM normalization.'
+    echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
 fi
 #---------------------------------------------------------------------------------
 ##################################################################################
