@@ -1,18 +1,28 @@
 #!/bin/bash
 
+set -eu
 ## Find overlapping peaks 
 
 module load bedtools
-module load R/4.1.2
+module load R
 
+echo "Clean all bed files inside current directory"
+rm -rf *.bed
+
+echo "Copying files"
 find ../G* -name "*narrowPeak*bed" | grep -v Scripts | grep -v blacklist | grep -v StrgtPksRm | xargs -n1 -I{} cp {} ./
 
+echo "Create combined.bed"
 ## combine all narrowPeaks inside current directory in one file
 cat *.bed > combined.bed
 
+echo "Sort combined.bed to combined.sorted.bed"
 sort -k1,1 -k2,2n combined.bed > combined.sorted.bed
+
+echo "Merge combined.sorted.bed to combined.sorted.merged.bed"
 bedtools merge -i combined.sorted.bed > combined.sorted.merged.bed
 
+echo "Make intersection of all bed files with combined.sorted.merged.bed"
 input_files=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | paste -s -d " "`
 input_names=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | grep -E -o 'M[0-9]+' | paste -s -d " "`
 bedtools intersect -wa -wb\
@@ -23,6 +33,7 @@ bedtools intersect -wa -wb\
 
 ## just aggregate and create xls file
 ## hardcoded combined.output as input
+echo "Run process_output.R"
 Rscript ./process_output.R
 
 ## almost work (does not remove duplicates)
