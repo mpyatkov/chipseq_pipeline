@@ -24,7 +24,13 @@ bedtools merge -i combined.sorted.bed > combined.sorted.merged.bed
 
 echo "Make intersection of all bed files with combined.sorted.merged.bed"
 input_files=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | paste -s -d " "`
-input_names=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | grep -E -o 'M[0-9]+' | paste -s -d " "`
+
+## only M numbers. ex. M9,M10,... (convinient when need short names)
+# input_names=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | grep -E -o 'M[0-9]+' | paste -s -d " "`
+
+## GM numbers. Ex. G196_M9, G196_M10 (more convinient if Sample_Labels.txt will be parsed)
+input_names=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | grep -E -o 'G[0-9]+_M[0-9]+' | paste -s -d " "`
+
 bedtools intersect -wa -wb\
     -a combined.sorted.merged.bed \
     -b ${input_files} \
