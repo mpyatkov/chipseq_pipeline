@@ -75,10 +75,29 @@ def create_dir_and_make_links(samples, sample_id, lane_index):
     fastq_files = samples[sample_id][lane_name]
     create_symlink(fastq_files, str(sample_path))
 
+
+## are we going to copy the following samples dialog
+def user_dialog_samples(sample_id):
+    res = False
+    while True:
+        
+        print(f"\nWould you like to copy/make link for {sample_id} (YyNn, default: N): ) ", end='')
+        answer = input()
+        if answer not in "Yynn":
+            print("Wrong answer. Try it again")
+            continue
+
+        if answer in "Yy":
+            res = True
+            break
+        break
+    return res
+
+        
 ## asks user which lane to use if script found multiple inside one
 ## sample directory (ex. L1, L4, etc)
 ## return index of selected lane
-def user_dialog(d):
+def user_dialog_lanes(d):
 
     selected_index = -1
     while True:
@@ -98,8 +117,7 @@ def user_dialog(d):
             break
         
     return int(selected_index)
-    
- 
+
 if __name__ == "__main__":
 
     if sys.argv[1] == "":
@@ -127,6 +145,11 @@ if __name__ == "__main__":
 
     for ix,sample_id in enumerate(samples.keys()):
 
+        ## if it not required to copy the following samples
+        ## just jump to another one
+        if not user_dialog_samples(sample_id):
+            continue
+        
         print(f"Processing sample #{ix+1} ({sample_id})")
         
         if len(samples[sample_id].keys()) == 1:
@@ -134,7 +157,7 @@ if __name__ == "__main__":
             create_dir_and_make_links(samples, sample_id, 0)
         else:
             ## get index for lane first
-            ix = user_dialog(samples[sample_id])
+            ix = user_dialog_lanes(samples[sample_id])
             create_dir_and_make_links(samples, sample_id, ix)
 
         print("#"*40)
