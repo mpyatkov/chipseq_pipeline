@@ -40,7 +40,7 @@ bedtools intersect -wa -wb\
 ## just aggregate and create xls file
 ## hardcoded combined.output as input
 echo "Run process_output.R"
-Rscript ./process_output.R
-
+Rscript ./process_output_detailed.R
+Rscript ./process_output_compact.R
 ## almost work (does not remove duplicates)
 # cat combined.output | bedtools groupby -i combined.output -g 1-3 -c 4 -o collapse,count > combined.output1

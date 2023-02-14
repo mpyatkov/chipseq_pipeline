@@ -22,4 +22,4 @@ bed <- read_tsv("combined.output", col_names = F) %>%
     select(chr, start, end, samples_intersects = who, how_many_samples_intersects = n) %>% 
     arrange(desc(how_many_samples_intersects))
 
-write_xlsx(bed,'peaks_intersections.xlsx')
+write_xlsx(bed,'peaks_intersections_compact.xlsx')
