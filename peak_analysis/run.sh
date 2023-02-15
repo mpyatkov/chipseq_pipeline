@@ -29,7 +29,7 @@ input_files=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | paste -
 # input_names=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | grep -E -o 'M[0-9]+' | paste -s -d " "`
 
 ## GM numbers. Ex. G196_M9, G196_M10 (more convinient if Sample_Labels.txt will be parsed)
-input_names=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | grep -E -o 'G[0-9]+_M[0-9]+' | paste -s -d " "`
+input_names=`find . -name "*narrowPeak.bed" | xargs -n1 basename |sort | grep -E -o 'G[0-9]+_?M[0-9]+' | paste -s -d " "`
 
 bedtools intersect -wa -wb\
     -a combined.sorted.merged.bed \
