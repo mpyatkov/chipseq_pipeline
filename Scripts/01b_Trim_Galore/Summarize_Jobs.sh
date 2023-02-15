@@ -132,7 +132,7 @@ Quality_Trimmed=$(grep 'Quality-trimmed' ${Report_File} | awk '{print $2" "$3" "
 Total_Written_to_Output=$(grep 'Total written (filtered)' ${Report_File}  | awk '{print $4" "$5" "$6}')
 Total_Sequences_Processed=$(grep 'sequences processed in total' ${Report_File} | awk '{print $1}')
 #Print to output file
-echo ${Sample_ID} $'\t'${Description} $'\t'${FASTQ_Name} $'\t'${Total_Reads_Processed} $'\t'${Reads_With_Adapters} $'\t'${Reads_Passing_Filters} $'\t'${Total_bp_processed} $'\t'${Quality_Trimmed} $'\t'${Total_Written_to_Output} $'\t'${Total_Sequences_Processed} $'\t'$PAIR_ORIENTATION >> ${OUTPUT_FILE}
+echo "${Sample_ID}\t${Description}t${FASTQ_Name}\t${Total_Reads_Processed}\t${Reads_With_Adapters}\t${Reads_Passing_Filters}\t${Total_bp_processed}\t${Quality_Trimmed}\t${Total_Written_to_Output}\t${Total_Sequences_Processed}" >> ${OUTPUT_FILE}
 #End of loop over Report_List
 done
 #End of loop over Sample_Labels.temp
