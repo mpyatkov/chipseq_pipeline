@@ -134,7 +134,7 @@ def user_dialog_lanes(d):
         print("-"*20)
         for index,lane in enumerate(d.keys()):
             print(f"{index}) {lane}")
-        print(f"\nwhich lane are you going to copy ({list(range(len(d)))}): ", end='')
+        print(f"\nwhich lane would you like to copy {list(range(len(d)))}: ", end='')
         try:
             selected_index = int(input())
         except ValueError:
@@ -191,5 +191,5 @@ if __name__ == "__main__":
             create_dir_and_make_links(samples, sample_id, ix)
 
         print("#"*40)
-        print(f"Directory for {sample_id} was succefuly created.")
+        print(f"Directory for {sample_id} created successfully.")
         print("#"*40+"\n")
