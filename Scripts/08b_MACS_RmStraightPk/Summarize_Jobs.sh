@@ -38,6 +38,7 @@ set -eu
 #Search for latest program installed:
 #module avail -t 2>&1 | grep -i bedtools
 module load bedtools
+module load R
 #---------------------------------------------------------------------------------
 DATA_DIR=${Dataset_DIR}
 #---------------------------------------------------------------------------------
