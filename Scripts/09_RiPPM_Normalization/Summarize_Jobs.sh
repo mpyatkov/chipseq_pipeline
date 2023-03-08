@@ -263,8 +263,9 @@ echo '#-------------------------------------------------------------------------
 echo 'Copying Norm_Factors.txt to the RiPPM_Boxplots step Input folder'
 echo 'Note: this Norm_Factors.txt file will be used for plotting.'
 echo '#-------------------------------------------------------------------------'
-RiPPM_Boxplots_Job_Name=$(ls -al ../../ | awk '{print $9}' | grep 'RiPPM_Boxplots')
-cp Norm_Factors.txt ../../${RiPPM_Boxplots_Job_Name}/Input/RiPPM
+# RiPPM_Boxplots_Job_Name=$(ls -al ../../ | awk '{print $9}' | grep 'RiPPM_Boxplots')
+# echo ${RiPPM_Boxplots_Job_Name}
+# cp Norm_Factors.txt ../../${RiPPM_Boxplots_Job_Name}/Input/RiPPM
 #Go back to job dir:
 cd ${SCRIPT_DIR}
 ##################################################################################
