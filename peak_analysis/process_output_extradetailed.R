@@ -60,6 +60,7 @@ extra_details <- left_join(read_tsv("combined.output", col_names = F), xls, by =
   # select(-max_param, -rowid) %>% 
   ungroup() %>% 
   select(-X5,-X6,-X7, -X8) %>%
+  distinct() %>% 
   # group_by(X1, X2, X3) %>% mutate(how_many_samples_intersect = n()) %>% ungroup() %>% 
   pivot_longer(c("length", "pileup", "fold_enrichment", "log10_qvalue"), values_to = "param") %>% 
   # arrange(X4) %>% 
