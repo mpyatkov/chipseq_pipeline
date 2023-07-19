@@ -131,7 +131,8 @@ echo 'track type=bigWig name="'${Sample_ID}'_RiPPM_norm" description="'${Descrip
 #---------------------------------------------------------------------------------
 #Make bigBed tracks (peaks):
 #macs2:
-echo "track type=bigBed name=\"${Sample_ID}_MACS2_narrowPeak_peaks\" description=\"${Sample_ID}_MACS2_narrowPeak_peaks\" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/${BU_User}/${Dataset_Label}/${Sample_ID}_MACS2_peaks.narrowPeak.bb"
+echo "track type=bigBed name=\"${Sample_ID}_MACS2_narrowPeak_peaks\" description=\"${Sample_ID}_MACS2_narrowPeak_peaks\" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/${BU_User}/${Dataset_Label}/${Sample_ID}_narrow_MACS2_peaks.narrowPeak.bb"
+echo "track type=bigBed name=\"${Sample_ID}_MACS2_broadPeak_peaks\" description=\"${Sample_ID}_MACS2_broadPeak_peaks\" visibility=squish color=255,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/${BU_User}/${Dataset_Label}/${Sample_ID}_broad_MACS2_peaks.broadPeak.bb"
 #---------------------------------------------------------------------------------
 #SICER:
 if [ -d "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" ]
@@ -252,7 +253,8 @@ echo 'track type=bigWig name="'${Sample_ID}'_RiPPM_norm" description="'${Descrip
 #---------------------------------------------------------------------------------
 #Make bigBed tracks (peaks):
 #macs2:
-echo 'track type=bigBed name="'${Sample_ID}'_MACS2_narrowPeak_peaks" description="'${Sample_ID}'_MACS2_narrowPeak_peaks" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Sample_ID}'_MACS2_peaks.narrowPeak.bb'
+echo "track type=bigBed name=\"${Sample_ID}_MACS2_narrowPeak_peaks\" description=\"${Sample_ID}_MACS2_narrowPeak_peaks\" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/${BU_User}/${Dataset_Label}/${Sample_ID}_narrow_MACS2_peaks.narrowPeak.bb"
+echo "track type=bigBed name=\"${Sample_ID}_MACS2_broadPeak_peaks\" description=\"${Sample_ID}_MACS2_broadPeak_peaks\" visibility=squish color=255,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/${BU_User}/${Dataset_Label}/${Sample_ID}_broad_MACS2_peaks.broadPeak.bb"
 #---------------------------------------------------------------------------------
 #SICER:
 
@@ -374,7 +376,8 @@ echo 'track type=bigWig name="'${Sample_ID}'_RiPPM_norm" description="'${Descrip
 #---------------------------------------------------------------------------------
 #Make bigBed tracks (peaks):
 #macs2:
-echo 'track type=bigBed name="'${Sample_ID}'_MACS2_narrowPeak_peaks" description="'${Sample_ID}'_MACS2_narrowPeak_peaks" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/'${BU_User}'/'${Dataset_Label}'/'${Sample_ID}'_MACS2_peaks.narrowPeak.bb'
+echo "track type=bigBed name=\"${Sample_ID}_MACS2_narrowPeak_peaks\" description=\"${Sample_ID}_MACS2_narrowPeak_peaks\" visibility=squish color=0,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/${BU_User}/${Dataset_Label}/${Sample_ID}_narrow_MACS2_peaks.narrowPeak.bb"
+echo "track type=bigBed name=\"${Sample_ID}_MACS2_broadPeak_peaks\" description=\"${Sample_ID}_MACS2_broadPeak_peaks\" visibility=squish color=255,0,0 bigDataUrl=http://waxmanlabvm.bu.edu/${BU_User}/${Dataset_Label}/${Sample_ID}_broad_MACS2_peaks.broadPeak.bb"
 #---------------------------------------------------------------------------------
 #SICER:
 if [ -d "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" ]
