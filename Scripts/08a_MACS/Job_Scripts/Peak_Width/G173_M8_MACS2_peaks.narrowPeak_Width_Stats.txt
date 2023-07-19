@@ -1,2 +1,0 @@
-Peak Set	Min.	1st Qu.	Median	Mean	3rd Qu.	Max.
-G173_M8_MACS2_peaks.narrowPeak (4951)	233	254	284	300.849525348414	330	755
