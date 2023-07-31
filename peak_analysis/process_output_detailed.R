@@ -28,6 +28,7 @@ ParseArguments <- function() {
   p <- arg_parser('Peaks processing')
   p <- add_argument(p,'--combined_bed', default="combined.output", help="intersections with all samples")
   p <- add_argument(p,'--sample_labels', default="../Scripts/00_Setup_Pipeline/Sample_Labels.txt", help="to extract addition information we can use tab separated Sample_Labels.txt")
+  p <- add_argument(p,'--output_prefix', default="output", help="output prefix to distinguish narrow/broad peaks")
   return(parse_args(p))
 }
 
@@ -56,7 +57,8 @@ bed <- bed %>%
   mutate_all(~replace(., is.na(.), 0)) %>% 
   arrange(desc(how_many_samples_intersect))
 
-write_xlsx(bed,'peaks_intersections_detailed.xlsx')
+## write_xlsx(bed,'peaks_intersections_detailed.xlsx')
+write_xlsx(bed, str_glue("{argv$output_prefix}_peaks_intersections_detailed.xlsx"))
 
 ## create xlsx workbook
 # library(openxlsx)

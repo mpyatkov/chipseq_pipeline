@@ -1,33 +1,38 @@
 ## Create xls with overlapping peaks stats
 
-## install writexl because it does not present in default module repo
-if (!require(writexl)){
-  ## create lib directory for local user if it is not created
-  if (!file.exists(Sys.getenv("R_LIBS_USER"))) {
-    dir.create(path = Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
-  }
-  ## install package
-  install.packages("writexl", lib = Sys.getenv("R_LIBS_USER"), repos = "https://cran.rstudio.com/")
-}
+remotes::install_cran("writexl")
+remotes::install_cran("argparser")
 
-## install writexl because it does not present in default module repo
-if (!require(argparser)){
-  ## create lib directory for local user if it is not created
-  if (!file.exists(Sys.getenv("R_LIBS_USER"))) {
-    dir.create(path = Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
-  }
-  ## install package
-  install.packages("argparser", lib = Sys.getenv("R_LIBS_USER"), repos = "https://cran.rstudio.com/")
-}
+library(argparser)
+library(writexl)
 
-require(writexl)
-require(argparser)
+# ## install writexl because it does not present in default module repo
+# if (!require(writexl)){
+#   ## create lib directory for local user if it is not created
+#   if (!file.exists(Sys.getenv("R_LIBS_USER"))) {
+#     dir.create(path = Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
+#   }
+#   ## install package
+#   install.packages("writexl", lib = Sys.getenv("R_LIBS_USER"), repos = "https://cran.rstudio.com/")
+# }
+# 
+# ## install writexl because it does not present in default module repo
+# if (!require(argparser)){
+#   ## create lib directory for local user if it is not created
+#   if (!file.exists(Sys.getenv("R_LIBS_USER"))) {
+#     dir.create(path = Sys.getenv("R_LIBS_USER"), showWarnings = FALSE, recursive = TRUE)
+#   }
+#   ## install package
+#   install.packages("argparser", lib = Sys.getenv("R_LIBS_USER"), repos = "https://cran.rstudio.com/")
+# }
+
 library(tidyverse)
 
 ParseArguments <- function() {
   p <- arg_parser('Peaks processing')
   p <- add_argument(p,'--combined_bed', default="combined.output", help="intersections with all samples")
   p <- add_argument(p,'--sample_labels', default="../Scripts/00_Setup_Pipeline/Sample_Labels.txt", help="to extract addition information we can use tab separated Sample_Labels.txt")
+  p <- add_argument(p,'--output_prefix', default="output", help="output prefix to distinguish narrow/broad peaks")
   return(parse_args(p))
 }
 
@@ -42,7 +47,7 @@ sample_labels <- read_tsv(argv$sample_labels, col_names=T) %>%
 xls <- map_dfr(list.files(pattern = "*peaks.xls"), function (xls_fname){
   # fname <- str_extract(xls_fname,"^G\\d+\\w+\\d+(?=_MACS)")
   tmp <- read_tsv(xls_fname, comment = "#", col_names = T) %>% 
-    select(peak_id = 10, length = 4, pileup = 6, fold_enrichment = 8, log10_qvalue = 9)
+    select(peak_id = name, length, pileup, fold_enrichment, log10_qvalue = `-log10(qvalue)`)
 })
 
 extra_details <- left_join(read_tsv("combined.output", col_names = F), xls, by = c("X8" = "peak_id")) %>% 
@@ -99,7 +104,11 @@ bed <- bed %>%
 #   pivot_wider(names_from = c("X4","name"), values_from = param)
 
 result <- left_join(bed, extra_details, by=c("chr"= "X1","start" = "X2","end" = "X3"))
-write_xlsx(result,'peaks_intersections_extradetailed.xlsx')
+
+## write_xlsx(result,'peaks_intersections_extradetailed.xlsx')
+write_xlsx(result, str_glue("{argv$output_prefix}_peaks_intersections_extradetailed.xlsx"))
+
+
 
 ## create xlsx workbook
 # library(openxlsx)

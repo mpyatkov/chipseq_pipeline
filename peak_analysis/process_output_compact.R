@@ -1,5 +1,7 @@
 ## Create xls with overlapping peaks stats
 
+args = commandArgs(trailingOnly=TRUE)
+output_prefix <- args[1]
 
 ## install writexl because it does not present in default module repo
 if (!require(writexl)){
@@ -22,4 +24,4 @@ bed <- read_tsv("combined.output", col_names = F) %>%
     select(chr, start, end, samples_intersects = who, how_many_samples_intersects = n) %>% 
     arrange(desc(how_many_samples_intersects))
 
-write_xlsx(bed,'peaks_intersections_compact.xlsx')
+write_xlsx(bed, str_glue("{output_prefix}_peaks_intersections_compact.xlsx"))
