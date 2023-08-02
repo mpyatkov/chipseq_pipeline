@@ -189,11 +189,11 @@ echo '#-------------------------------------------------------------------------
 #Copy R_Markdown files to run in Summary folder:
 
 cd ${OUTPUT_DIR}
-# cp -r ${SCRIPT_DIR}/Job_Scripts/R_Markdown/* ./
+
 ### UNCOMMENT THIS IF YOU WOULD LIKE TO RUN the following rmarkdown script
 ### Very slow way to calculate the Norm_Factors, uncomment the
 ### following line if you would like to get the pdf with some stats
-
+# cp -r ${SCRIPT_DIR}/Job_Scripts/R_Markdown/* ./
 # module load gcc/7.4.0
 # module load R
 # module load texlive/2018

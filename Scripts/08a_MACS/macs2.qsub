@@ -307,6 +307,9 @@ cp *_Stats.txt "${name}_MACS2_output"
 
 echo 'Starting BED_to_WIG'
 #Copy BED file to conversion folder:
+mkdir -p ./BED_to_WIG/Input_files/
+mkdir -p ./BED_to_WIG/Input_files_2/
+
 cp "./${name}_MACS2_output/${name}_narrow_MACS2_peaks.narrowPeak.bed" ./BED_to_WIG/Input_files/
 cp "./${name}_MACS2_output/${name}_broad_MACS2_peaks.broadPeak.bed" ./BED_to_WIG/Input_files/
 
