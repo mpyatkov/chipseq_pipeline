@@ -76,8 +76,7 @@ def create_symlink(fq_files, dst):
 
         ## change extension from fq.gz etc... to fastq.gz
         ## if it required
-        extension = "".join(file_src.suffixes)
-        if extension != RIGHT_EXTENSION:
+        if not str(file_src).endswith(RIGHT_EXTENSION):
             fname = fname.replace(extension, RIGHT_EXTENSION)
 
         ## change _1,_2 -> _R1,_R2
