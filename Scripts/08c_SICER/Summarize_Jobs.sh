@@ -403,8 +403,8 @@ fi
 #---------------------------------------------------------------------------------
 if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
 then
-    RiPPM_Normalization_Job_Name=09_RiPPM_Normalization
-    cp ${OUTPUT_DIR}/Peaks_Called/Peak_Union/Peak_Union.bed ../../${RiPPM_Normalization_Job_Name}/Peak_Union
+    mkdir -p ../../09_RiPPM_Normalization/Peak_Union
+    cp ${OUTPUT_DIR}/Peaks_Called/Peak_Union/Peak_Union.bed ../../09_RiPPM_Normalization/Peak_Union/
 fi
 #---------------------------------------------------------------------------------
 #Check if the ${Input_Sites_RiPPM} was set:
