@@ -49,7 +49,7 @@
 #---------------------------------------------------------------------------
 #Load library:
 library(ggplot2)
-#---------------------------------------------------------------------------
+
 #Pass arguments from sh into R
 args <- commandArgs(trailingOnly = TRUE)
 Output_File <- args[1]
@@ -61,7 +61,7 @@ log2FC_cutoff <- as.numeric(args[6])
 #Need a label to indicate the FC cutoff being used:
 FC_cutoff_label <- round(2^log2FC_cutoff, digits=2)
 min_avg_count <- 20
-#---------------------------------------------------------------------------
+
 print("Print arguments:")
 print("-----------------")
 print("Output_File:")
@@ -77,7 +77,7 @@ paste(output_dir,sep="")
 print("min_avg_count:")
 paste(min_avg_count,sep="")
 print("-----------------")
-#---------------------------------------------------------------------------
+
 #Use a pattern match in an "if" statement 
 #to remind user to use the  *.annotated file
 #Spaces/brackets matter for "if" statement syntax
@@ -88,11 +88,11 @@ invisible(if ( grepl("annotated", Output_File) ) {
 print("WARNING: Output_File is not the *.annotated file!")
 }#End of else statement
 )#End of invisible
-#---------------------------------------------------------------------------
+
 #Need to set the dir so that this script can work in any folder:
 dir <- getwd()
 setwd(dir)
-#---------------------------------------------------------------------------
+
 #Check to make sure *.annotated file exists
 #Need invisible() to avoid printing NULL
 invisible(if ( length(list.files(pattern = "annotated")) >= 1)  {
@@ -103,7 +103,7 @@ print("Quitting R now.")
 quit()
 }#End of else statement
 )#End of invisible
-#---------------------------------------------------------------------------
+
 diffReps_output <- read.table(Output_File, as.is = TRUE, header = TRUE, sep = "\t", fill = TRUE)
 #colnames(diffReps_output)
 #Gives the correct 26 columns:
@@ -211,7 +211,7 @@ S2_diff_data <- diffReps_output[diffReps_output$Event =="Up" & diffReps_output$l
 paste(S2_diff,":",sep="")
 dim(S2_diff_data)
 print("-----------------")
-#---------------------------------------------------------------------------
+
 #Need to check that differential peaks exist (non-zero count)
 #If there are zero delta sites, this R script needs to exit
 if(dim(S1_diff_data)[1] == 0 | dim(S2_diff_data)[1] == 0){
@@ -220,7 +220,7 @@ if(dim(S1_diff_data)[1] == 0 | dim(S2_diff_data)[1] == 0){
 	quit()
 }
 #End of if statement
-#---------------------------------------------------------------------------
+
 #Need to create PCA BED files (top 200 and top 600 diffReps sites based on log2FC)
 #Sort diffReps_output by log2FC (descending)
 #--------------------------------------
@@ -248,7 +248,7 @@ write.table(Top_200_BED, file = paste(S2_diff,"_","diffReps_Top_200",".bed", sep
 write.table(Top_600_BED, file = paste(S2_diff,"_","diffReps_Top_600",".bed", sep =""), quote=FALSE, sep = "\t",row.names = FALSE,col.names = FALSE)
 #Move *.bed files to PCA_BED_Files_dir 
 system(paste("mv *_Top_*.bed ",PCA_BED_Files_dir,sep=""))
-#---------------------------------------------------------------------------
+
 #Additional average count filter to visualize strong differential sites:
 #Arbitrary cutoffs of 100 and 200 returned handful of sites
 #--------------------------------------
@@ -285,7 +285,7 @@ Filter_02 <- Filter_01[Filter_01$log2FC < -(log2FC_cutoff) | Filter_01$log2FC > 
 #Now want to subset Filter_02 by different FDR values
 #-----------------------------------------------------
 #Even though there are a handful of FDR cutoffs, it would be best to use an R function:
-#---------------------------------------------------------------------------
+
 #R function to parse data frame for a single FDR cutoff
 FDR_filter <- function(FDR_cutoff){
 FDR_cutoff <- as.numeric(FDR_cutoff)
@@ -312,19 +312,19 @@ Filtered_Table$"FDR_Label" <- paste("FDR<=", FDR_cutoff, sep="")
 output_list <- list(Filtered_Data, Filtered_Table)
 return(output_list)
 }#end of FDR_filter function
-#---------------------------------------------------------------------------
+
 #Creating list objects:
 #Access the Filtered_Data: 
 #FDR_lt_0.05[[1]]
 #Access the Filtered_Table:
 #FDR_lt_0.05[[2]]
-#---------------------------------------------------------------------------
+
 #Call the function:
 FDR_lt_0.05 <- FDR_filter(0.05)
 FDR_lt_0.01 <- FDR_filter(0.01)
 FDR_lt_0.005 <- FDR_filter(0.005)
 FDR_lt_0.001 <- FDR_filter(0.001)
-#---------------------------------------------------------------------------
+
 #Now I can concatenate these tables:
 FDR_Counts <- rbind(FDR_lt_0.05[[2]], FDR_lt_0.01[[2]], FDR_lt_0.005[[2]], FDR_lt_0.001[[2]])
 #Make a grouped bar plot:
@@ -362,12 +362,12 @@ ggsave(FDR_plot, file=paste(Peak_Caller,"_FDR_Barchart.pdf",sep=""),width = 7, h
 #4. S1_marginal_delta
 #5. S1_real_delta
 S2_real_delta <- diffReps_output[diffReps_output$Event =="Down" & diffReps_output$log2FC < -(log2FC_cutoff) & diffReps_output$Control.avg > min_avg_count,]
-#---------------------------------------------------------------------------
+
 #Regarding the colors:
 #Some of the Site_Category groups may not exist (i.e. zero rows)
 #I should add a color column to the diffReps_output_hist data frame
 #Make use of the if statement below:
-#---------------------------------------------------------------------------
+
 S2_real_delta_label <- paste("1.",S1_diff,"_","sites", sep ="")
 #Check to make sure rows exist in S2_real_delta
 #Need invisible() to avoid printing NULL
@@ -378,9 +378,9 @@ print("Warning: There are zero rows in S2_real_delta!")
 S2_real_delta$Site_Category <- S2_real_delta_label
 }#End of else statement
 )#End of invisible
-#---------------------------------------------------------------------------
+
 S2_marginal_delta <- diffReps_output[diffReps_output$Event =="Down" & diffReps_output$log2FC < -(log2FC_cutoff) & diffReps_output$Control.avg <= min_avg_count,]
-#---------------------------------------------------------------------------
+
 S2_marginal_delta_label <- paste("2.","Marginal","_","sites", sep ="")
 #Check to make sure rows exist in S2_marginal_delta
 #Need invisible() to avoid printing NULL
@@ -391,9 +391,9 @@ print("Warning: There are zero rows in S2_marginal_delta!")
 S2_marginal_delta$Site_Category <- S2_marginal_delta_label
 }#End of else statement
 )#End of invisible
-#---------------------------------------------------------------------------
+
 Less_2fold <- diffReps_output[diffReps_output$log2FC >= -(log2FC_cutoff) & diffReps_output$log2FC <= (log2FC_cutoff),]
-#---------------------------------------------------------------------------
+
 Less_2fold_label <- paste0("3.Less_",FC_cutoff_label,"-fold")
 #Check to make sure rows exist in Less_2fold
 #Need invisible() to avoid printing NULL
@@ -404,9 +404,9 @@ print("Warning: There are zero rows in Less_FC_cutoff!")
 Less_2fold$Site_Category <- Less_2fold_label
 }#End of else statement
 )#End of invisible
-#---------------------------------------------------------------------------
+
 S1_marginal_delta <- diffReps_output[diffReps_output$Event =="Up" & diffReps_output$log2FC > (log2FC_cutoff) & diffReps_output$Treatment.avg <= min_avg_count,]
-#---------------------------------------------------------------------------
+
 S1_marginal_delta_label <- paste("4.","Marginal","_","sites", sep ="")
 #Check to make sure rows exist in S1_marginal_delta
 #Need invisible() to avoid printing NULL
@@ -417,9 +417,9 @@ print("Warning: There are zero rows in S1_marginal_delta!")
 S1_marginal_delta$Site_Category <- S1_marginal_delta_label
 }#End of else statement
 )#End of invisible
-#---------------------------------------------------------------------------
+
 S1_real_delta <- diffReps_output[diffReps_output$Event =="Up" & diffReps_output$log2FC > (log2FC_cutoff) & diffReps_output$Treatment.avg > min_avg_count,]
-#---------------------------------------------------------------------------
+
 S1_real_delta_label <- paste("5.",S2_diff,"_","sites", sep ="")
 #Check to make sure rows exist in S1_real_delta
 #Need invisible() to avoid printing NULL
@@ -430,7 +430,7 @@ print("Warning: There are zero rows in S1_real_delta!")
 S1_real_delta$Site_Category <- S1_real_delta_label
 }#End of else statement
 )#End of invisible
-#---------------------------------------------------------------------------
+
 print("-----------------")
 #Confirmed that sum of the rows of the above equals the original number of rows:
 #dim(S2_real_delta)[1] + dim(S2_marginal_delta)[1] + dim(Less_2fold)[1] + dim(S1_marginal_delta)[1] + dim(S1_real_delta)[1]
@@ -457,7 +457,7 @@ diffReps_output_hist <- rbind(S2_real_delta, S2_marginal_delta, Less_2fold, S1_m
 #control the legend font size using:
 #+ theme(legend.text=element_text(size=X))
 #Default size looks like size=10
-#---------------------------------------------------------------------------
+
 #Manually setting group colors for ggplot2
 #http://stackoverflow.com/questions/17180115/manually-setting-group-colors-for-ggplot2
 #Need a "named vector" to do this:
@@ -474,7 +474,7 @@ hist.colors <- as.data.frame(hist.colors)
 hist.colors.named.vector <- setNames(as.character(hist.colors$V1), as.character(rownames(hist.colors)))
 #Plot command:
 hist_plot <- ggplot(diffReps_output_hist, aes(x=log2FC,  fill=Site_Category)) + geom_histogram(binwidth=.1) + scale_fill_manual(values=hist.colors.named.vector) + ggtitle(paste("Fold Change for diffReps condition-specific sites","\n"," (",dim(diffReps_output_hist)[1],")"," Total Sites",sep="")) + ylab("Count of Condition-specific Regions") + xlab("log2(Fold Change)") + theme(legend.background = element_rect(colour = "black"), legend.text=element_text(size=10))
-#---------------------------------------------------------------------------
+
 #hist_plot <- ggplot(diffReps_output_hist, aes(x=log2FC,  fill=Site_Category)) + geom_histogram(binwidth=.1) + scale_fill_manual(values=c("blue","gray","black","gray","red")) + ggtitle(paste("Fold Change for diffReps condition-specific sites","\n"," (",dim(diffReps_output_hist)[1],")"," Total Sites",sep="")) + ylab("Count of Condition-specific Regions") + xlab("log2(Fold Change)") + theme(legend.background = element_rect(colour = "black"), legend.text=element_text(size=10))
 #Save images to PDF file for best quality
 #http://docs.ggplot2.org/current/ggsave.html
@@ -598,13 +598,13 @@ dev.off()
 ##Call the function:
 make_stacked_bar_plot(S1_diff_data, paste(S1_diff,sep =""))
 make_stacked_bar_plot(S2_diff_data, paste(S2_diff,sep =""))
-#---------------------------------------------------------------------------
+
 #Combine the *.png files:
 #-append stacks vertically
 #+append stack horizontally
 system(paste("convert +append *_Feature_Dist.png +append ",Peak_Caller,"_Feature_Distribution.png",sep=""))
 system("rm *_Feature_Dist.png")
-#---------------------------------------------------------------------------
+
 #Sort data_frames
 S1_diff_data <- S1_diff_data[order(S1_diff_data$"Chrom",S1_diff_data$"Start"),]
 S2_diff_data <- S2_diff_data[order(S2_diff_data$"Chrom",S2_diff_data$"Start"),]
@@ -613,7 +613,7 @@ write.table(S1_diff_data, file = paste(S1_diff,"_",Peak_Caller,"_annotated.txt",
 write.table(S2_diff_data, file = paste(S2_diff,"_",Peak_Caller,"_annotated.txt", sep =""), quote=FALSE, sep = "\t",row.names = FALSE,col.names = TRUE)
 #Move *_annotated.txt files to Annotated_Files_dir 
 system(paste("mv *_annotated.txt ",Annotated_Files_dir,sep=""))
-#---------------------------------------------------------------------------
+
 #Add color to BED files to get a single BED file of all peaks with 3 colors
 #S1_diff color = Blue (0,0,255)
 #S2_diff color = Red 	(255,0,0)
@@ -629,16 +629,16 @@ system(paste("mv *_annotated.txt ",Annotated_Files_dir,sep=""))
 #thickStart
 #thickEnd
 #itemRgb
-#---------------------------------------------------------------------------
+
 S1_diff_data_BED <- cbind(S1_diff_data$"Chrom",S1_diff_data$"Start",S1_diff_data$"End",S1_diff,"1000",".","0","0","0,0,255")
 S2_diff_data_BED <- cbind(S2_diff_data$"Chrom",S2_diff_data$"Start",S2_diff_data$"End",S2_diff,"1000",".","0","0","255,0,0")
-#---------------------------------------------------------------------------
+
 #Make BED files of delta regions, run Peak_Width.sh, summarize output 
 write.table(S1_diff_data_BED, file = paste(S1_diff,"_",Peak_Caller,".bed", sep =""), quote=FALSE, sep = "\t",row.names = FALSE,col.names = FALSE)
 write.table(S2_diff_data_BED, file = paste(S2_diff,"_",Peak_Caller,".bed", sep =""), quote=FALSE, sep = "\t",row.names = FALSE,col.names = FALSE)
 #Move *.bed files to BED_Files_dir 
 system(paste("mv *.bed ",BED_Files_dir,sep=""))
-#---------------------------------------------------------------------------
+
 #Calculate peak widths:
 #Make an R function to calculate the peak width and print to output file
 peak_width <- function(data_frame,Peak_name){
@@ -658,7 +658,7 @@ return(data_frame)
 #Call the function:
 S1_diff_Call <- peak_width(S1_diff_data, paste(S1_diff,"_",Peak_Caller,sep =""))
 S2_diff_Call <- peak_width(S2_diff_data, paste(S2_diff,"_",Peak_Caller,sep =""))
-#---------------------------------------------------------------------------
+
 #Combine data_frames, sort, output to single BED file
 #Need list of data_frames
 Name_List <- c('S1_diff_data_BED','S2_diff_data_BED')
@@ -678,10 +678,10 @@ system(paste("mv temp1.bed ",Peak_Caller,"_Peaks_UCSC.bed",sep =""))
 system('rm Header.txt')
 #Move *_UCSC.bed files to UCSC_Files_dir 
 system(paste("mv *_UCSC.bed ",UCSC_Files_dir,sep=""))
-#---------------------------------------------------------------------------       
+       
 S1_diff_peaks <- dim(S1_diff_data)[1]
 S2_diff_peaks <- dim(S2_diff_data)[1]
-#---------------------------------------------------------------------------
+
 output_table <- matrix(c(S1_diff_peaks, S2_diff_peaks), ncol=1,byrow=TRUE)
 colnames(output_table) <- c(paste("Number of Condition-specific Sites","\n","\t","(at least ",FC_cutoff_label,"-fold different)","\n","\t","(min_avg_count > ",min_avg_count,")","\n","\t","(FDR < 0.05)" ,sep=''))
 rownames(output_table) <- c(paste(S1_diff,"_",Peak_Caller,sep=""),paste(S2_diff,"_",Peak_Caller,sep=""))
@@ -692,4 +692,4 @@ system(paste("cat ",Peak_Caller,"_peak_count.txt ",S1_diff,"_",Peak_Caller,"_Wid
 system(paste("mv temp1.txt ",Peak_Caller,"_peak_count.txt",sep=""))
 system("rm *_Width_Stats.txt")
 print("Check out the Summary folder!")
-#####################################################################################
+

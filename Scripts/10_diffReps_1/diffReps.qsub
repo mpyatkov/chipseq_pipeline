@@ -6,15 +6,12 @@ set -eu
 ##################################################################################
 # Specify which shell to use
 #$ -S /bin/bash
-# Run on the current working directory
 #$ -cwd
-
-# Join standard output and error to a single file  
 #$ -j y
-# change to y if you want a single qlog file 
-##################################################################################
+#$ -pe omp 16
 #Initialize variables from diffReps.sh
 ##################################################################################
+
 #checking the command line arg
 #-ne : "is not equal to"
 if [ $# -ne 9 ] ; then
@@ -22,12 +19,6 @@ if [ $# -ne 9 ] ; then
     echo "qsub -N ${Job_Name}'_diffReps_'${COMPAR_NUM} -P waxmanlab -q !linga diffReps.qsub ${Dataset_DIR} ${Dataset_Label} ${Control_Samples_NAME} ${Treatment_Samples_NAME} ${COMPAR_NUM} ${WINDOW_SIZE} ${FRAG_SIZE} ${Input_Sites_RiPPM} ${SCRIPT_DIR}"
     exit 0
 fi
-
-#http://www.ibm.com/developerworks/library/l-bash-parameters/
-#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
-
-#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
-#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
 
 #process the command line arguments
 Dataset_DIR=$1
@@ -40,45 +31,20 @@ FRAG_SIZE=$7
 Input_Sites_RiPPM=$8
 SCRIPT_DIR=$9
 
-#---------------------------------------------------------------------------------
+
 #Check that each variable prints a value to the terminal:
-echo "-----------------------"
-echo "Start of variable list:"
-echo "-----------------------"
-echo "Dataset_DIR:"
-echo ${Dataset_DIR}
-echo "Dataset_Label:"
-echo ${Dataset_Label}
-echo "Control_Samples_NAME:"
-echo ${Control_Samples_NAME}
-echo "Treatment_Samples_NAME:"
-echo ${Treatment_Samples_NAME}
-echo "COMPAR_NUM:"
-echo ${COMPAR_NUM}
-echo "WINDOW_SIZE:"
-echo ${WINDOW_SIZE}
-echo "FRAG_SIZE:"
-echo ${FRAG_SIZE}
-echo "Input_Sites_RiPPM:"
-echo ${Input_Sites_RiPPM}
-echo "SCRIPT_DIR:"
-echo ${SCRIPT_DIR}
-echo "-----------------------"
-echo "End of variable list"
-echo "-----------------------"
-#---------------------------------------------------------------------------------
+echo "Dataset_DIR: ${Dataset_DIR}"
+echo "Dataset_Label: ${Dataset_Label}"
+echo "Control_Samples_NAME: ${Control_Samples_NAME}"
+echo "Treatment_Samples_NAME: ${Treatment_Samples_NAME}"
+echo "COMPAR_NUM: ${COMPAR_NUM}"
+echo "WINDOW_SIZE: ${WINDOW_SIZE}"
+echo "FRAG_SIZE: ${FRAG_SIZE}"
+echo "Input_Sites_RiPPM: ${Input_Sites_RiPPM}"
+echo "SCRIPT_DIR: ${SCRIPT_DIR}"
 
-#You can use option "-pe omp N", where N is the number of cores ( number of course on our system can be any integer between 1 and 16):
-#$ -pe omp 16
-#After job submission, use the following to confirm multiple cores:
-#top -u <user_id>
-#The press "1"
-#This will list the multiple cores being used (not necessarily the same number requested)
 
-# Now let's keep track of some information just in case anything goes wrong
 echo "=========================================================="
-#Use to calculate job time:
-#Start_Time in seconds
 Start_Time=$(date +"%s")
 echo "Starting on : $(date)"
 echo "Running on node : $(hostname)"
@@ -90,72 +56,39 @@ echo "Parameter for multiple cores : $NSLOTS"
 echo "=========================================================="
 
 # Go to local scratch directory
-echo
-echo 'Change dir to scratch directory'
-echo
 cd ${TMPDIR}
-echo
-echo 'Print scratch directory location:'
-echo
 echo $TMPDIR
-#--------------------------------------
-echo
-echo 'Loading required modules...'
-echo
-#Make sure the shebang line = #!/bin/bash -l
-set -eu
-#Need the -l option to load modules
-#Search for latest program installed:
-#module avail -t 2>&1 | grep -i bedtools
-module load bedtools/2.27.1
-#module avail -t 2>&1 | grep -i diff
-module load diffreps/1.55.6
-#Search for latest program installed:
-#For captial "R" remove (-i Ignore case sensitivity.) option
-#module avail -t 2>&1 | grep R
-module load R/3.6.0
-#--------------------------------------
 
-#---------------------------------------------------------------------------------
-#module help bedtools/2.25.0
-#----------- Module Specific Help for 'bedtools/2.25.0' ------------
-#bedtools 2.25.0 A swiss army knife for genome arithmetic.
-#Collectively, the bedtools utilities are a swiss-army knife of tools for a wide-range of genomics analysis tasks. The most widely-used tools enable genome arithmetic: that is, set theory on the genome. For example, bedtools allows one to intersect, merge, count, complement, and shuffle genomic intervals from multiple files in widely-used genomic file formats such as BAM, BED, GFF/GTF, VCF. While each individual tool is designed to do a relatively simple task (e.g., intersect two interval files), quite sophisticated analyses can be conducted by combining multiple bedtools operations on the UNIX command line.
-#For more information on bedtools, please see http://bedtools.readthedocs.org/en/latest/
-#---------------------------------------------------------------------------------
-#module help diffreps/1.55.4
-#----------- Module Specific Help for 'diffreps/1.55.4' ------------
-#diffreps 1.55.4 Tools for analysis of ChIP enrichment in ChIP-seq data.
-#ChIP-seq is now widely used to profile the enrichment of a DNA-binding protein 
-#on a genome. It is of high interest to compare the binding differences of a 
-#histone mark or transcription factor between two contrasting conditions, such as
-#disease vs. control. diffReps is developed to serve this purpose. It scans the
-#whole genome using a sliding window, performing millions of statistical tests 
-#and report the significant hits. diffReps takes into account the biological 
-#variations within a group of samples and uses that information to enhance the
-#statistical power. Considering biological variation is of high importance, 
-#especiallly for in vivo brain tissues (which is my group's high priority)
-#For more information on diffreps, please see code.google.com/p/diffreps
-#---------------------------------------------------------------------------------
-#----------- Module Specific Help for 'R/R-3.1.1' ------------------
-#R R-3.1.1: R is a system/language for statistical computation and graphics.
-#R 3.1.1  is a system (language) for statistical computation and graphics
-#R consists of a language plus run-time enviroment with graphics, a debugger,
-#access to certain system functions and the ability to run programs stored in
-#script files
-#For more information on R, visit http://cran.r-project.org/
-#---------------------------------------------------------------------------------
+module load bedtools/2.27.1
+module load R/3.6.0
+
+# module load diffreps/1.55.6
+# There is no more diffreps module on SCC, and I did not find it in conda repositories
+# so just installed in home directory using the following commands (I use zsh as main shell):
+
+# ## installing plenv 
+# cd ~
+# git clone https://github.com/tokuhirom/plenv.git ~/.plenv
+# echo 'export PATH="$HOME/.plenv/bin:$PATH"' >> ~/.
+# echo 'eval "$(plenv init -)"' >> .zshrc
+# exec $SHELL -l
+# ## installing cpanm
+# git clone https://github.com/tokuhirom/Perl-Build.git ~/.plenv/plugins/perl-build/
+# plenv install-cpanm
+# ## installing diffreps
+# mkdir ~/dist && cd ~/dist
+# wget https://github.com/shenlab-sinai/diffreps/archive/refs/tags/1.55.6.tar.gz
+# ~/perl5/bin/cpanm 1.55.6.tar.gz
+# ~/perl5/bin/cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+
+## this command allow us to use home directory as a library to load dependecies for diffreps
+cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
 
 #Output dir:
 OUTPUT_DIR=${SCRIPT_DIR}/'Output_diffReps_'${COMPAR_NUM}
+
 #Using an if statement to make the output folder if it does not exists
-if [ ! -d $OUTPUT_DIR ]; then
-    mkdir $OUTPUT_DIR; 
-fi
-#-----------------------------------------------------
-#Create folders to store input files:
-mkdir -p Input/Control
-mkdir -p Input/Treatment
+mkdir -p $OUTPUT_DIR
 
 #Copy over text files indicating control and treatment samples:
 cp ${SCRIPT_DIR}/Control_Samples.txt .
@@ -167,208 +100,114 @@ cp ${SCRIPT_DIR}/Job_Scripts/diffReps_Summary.* .
 #Copy over the Additional_Peak_Calls folder
 cp -r ${SCRIPT_DIR}/Additional_Peak_Calls .
 
-#---------------------------------------------------------------------------------
 #ENCODE has a list of blacklisted sites that should be removed:
 #https://sites.google.com/site/anshulkundaje/projects/blacklists
-#---------------------------------------------------------------------------------
+
 #Need to copy ENCODE_Blacklist regions:
 cp ${SCRIPT_DIR}/Job_Scripts/ENCODE_Blacklist/mm9-blacklist.bed.gz .
 gzip -d mm9-blacklist.bed.gz
-#---------------------------------------------------------------------------------
 
 #Note:
 #"Up" events will be when Treatment>Control
 #"Down" events will be when Treatment<Control
-#-----------------------------------------------
+
 #Use text files to indicate Control and Treatment samples
 #Control_Samples.txt
 #Treatment_Samples.txt
-#-----------------------------------------------
-#---------------------------------------------------------------------------------
-echo
-echo 'Copy control sample BAM files to Control folder'
-echo
-################################################
-#The text file is formatted like the following:
-#----------------------------------------------
-#Sample_DIR	Sample_ID	Description
-#Sample_Waxman-TP17	G83_M1	Male 8wk-pool 1
-#Sample_Waxman-TP18	G83_M2	Male 8wk-pool 2
-#Sample_Waxman-TP19	G83_M3	Female 8wk-pool 1
-#Sample_Waxman-TP20	G83_M4	Female 8wk-pool 2
-#----------------------------------------------
-#The 1st column: The Sample_DIR name
-#The 2nd column: Waxman Lab Sample_ID 
-#The 3rd column: Sample's description 
-################################################
-#Text file has a header line to ignore:
-tail -n +2 Control_Samples.txt > Control_Samples.temp
-#Use a while loop to run jobs
-while IFS=$'\t' read -r -a myArray
-do
-    #---------------------------
-    ##Check that text file is read in properly:
-    #echo 'Sample_DIR:'
-    Sample_DIR=${myArray[0]}
-    #echo 'Sample_ID:'
-    Sample_ID=${myArray[1]}
-    #echo $Sample_ID
-    #echo 'Description:'
-    Description=${myArray[2]}
-    #echo $Description
-    #---------------------------
-    #Copy control sample BAM files to Control folder
-    cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_fragments.bed.gz' ./Input/Control
-    #---------------------------
-done < Control_Samples.temp
-#Remove the temp file:
-rm Control_Samples.temp
-###############################################
-#---------------------------------------------------------------------------------
-echo
-echo 'Copy treatment sample BAM files to Treatment folder'
-echo
-################################################
-#The text file is formatted like the following:
-#----------------------------------------------
-#Sample_DIR	Sample_ID	Description
-#Sample_Waxman-TP17	G83_M1	Male 8wk-pool 1
-#Sample_Waxman-TP18	G83_M2	Male 8wk-pool 2
-#Sample_Waxman-TP19	G83_M3	Female 8wk-pool 1
-#Sample_Waxman-TP20	G83_M4	Female 8wk-pool 2
-#----------------------------------------------
-#The 1st column: The Sample_DIR name
-#The 2nd column: Waxman Lab Sample_ID 
-#The 3rd column: Sample's description 
-################################################
-#Text file has a header line to ignore:
-tail -n +2 Treatment_Samples.txt > Treatment_Samples.temp
-#Use a while loop to run jobs
-while IFS=$'\t' read -r -a myArray
-do
-    #---------------------------
-    ##Check that text file is read in properly:
-    #echo 'Sample_DIR:'
-    Sample_DIR=${myArray[0]}
-    #echo 'Sample_ID:'
-    Sample_ID=${myArray[1]}
-    #echo $Sample_ID
-    #echo 'Description:'
-    Description=${myArray[2]}
-    #echo $Description
-    #---------------------------
-    #Copy control sample BAM files to Control folder
-    cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_fragments.bed.gz' ./Input/Treatment
-    #---------------------------
-done < Treatment_Samples.temp
-#Remove the temp file:
-rm Treatment_Samples.temp
-###############################################
-#---------------------------------------------------------------------------------
-echo
-echo 'Start: BED file check'
-echo
 
-echo '#---------------------------------------------------------------------------------'
+echo 'Copy control sample BAM files to Control folder'
+mkdir -p Input/Control
+tail -n +2 Control_Samples.txt > Control_Samples.temp
+while IFS=$'\t' read -r -a myArray
+do
+    Sample_DIR=${myArray[0]}
+    Sample_ID=${myArray[1]}
+    Description=${myArray[2]}
+    cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_fragments.bed.gz' ./Input/Control
+done < Control_Samples.temp
+rm Control_Samples.temp
+
+echo 'Copy treatment sample BAM files to Treatment folder'
+mkdir -p Input/Treatment
+tail -n +2 Treatment_Samples.txt > Treatment_Samples.temp
+while IFS=$'\t' read -r -a myArray
+do
+    Sample_DIR=${myArray[0]}
+    Sample_ID=${myArray[1]}
+    Description=${myArray[2]}
+    cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_fragments.bed.gz' ./Input/Treatment
+done < Treatment_Samples.temp
+rm Treatment_Samples.temp
+
+echo 'Start: BED file check'
+
 echo 'Check the BED file(s) read count:'
 echo 'Remember:'
 echo 'For differential analysis jobs you want to use the full data (not the subset test data)'
 echo 'Otherwise job/commands will fail.'
 echo 'Check the BED file(s) column count:'
 echo 'Need to have BED files with 6 columns'
-echo '#---------------------------------------------------------------------------------'
 
 cd Input
 for folder in Control Treatment
 do 
-    echo $folder
-    cd $folder
+    pushd $folder
     BED_List=*.bed.gz
     for c in ${BED_List}
     do
 	BED_Name=${c%\.bed.gz}
-	echo ${BED_Name}
-	#Decompress file
 	gzip -d ${BED_Name}'.bed.gz'
-	echo 'Sample of file head:'
-	head -n 10 ${BED_Name}'.bed'
-	echo 'Sample of file tail:'
-	tail -n 10 ${BED_Name}'.bed'
 	Line_Count=$(wc -l < ${BED_Name}'.bed')	
-	#Check that BED files have the required 6 columns for diffReps:
-	#https://groups.google.com/forum/#!topic/diffreps-discuss/gma-3xXgJpo
-	#http://stackoverflow.com/questions/8629330/unix-count-of-columns-in-file
 	Column_Count=$(awk -F'\t' '{print NF; exit}' ${BED_Name}'.bed')
-	echo '-------------------------'	
+
 	echo ${BED_Name}'.bed column count:'
 	echo ${Column_Count}
-	echo '-------------------------'
+
 	#Need an if statement to deal with BED3 -> BED6 file conversions
 	if [ ${Column_Count} -eq 3 ] ; 
 	then
-	    echo "BED files have 3 columns"
-      	    echo "Start: convert BED3 to BED6 format"
-	    #Use UCSC format:
-	    #https://genome.ucsc.edu/FAQ/FAQformat.html#format1
-	    #Using variables within awk command:
-	    #http://stackoverflow.com/questions/19075671/how-to-use-shell-variables-in-awk-script
+	    echo "BED files have 3 columns. Start: convert BED3 to BED6 format"
+
 	    awk -v BED_Name="${BED_Name}" '{print $1"\t"$2"\t"$3"\t"BED_Name"\t"1000"\t""."}' ${BED_Name}'.bed' > ${BED_Name}'.temp1'
-	    #Replace the file:
 	    mv ${BED_Name}'.temp1' ${BED_Name}'.bed'
-	    #Check converted file
-	    echo 'Sample of file head:'
-	    head -n 10 ${BED_Name}'.bed'
-	    echo 'Sample of file tail:'
-	    tail -n 10 ${BED_Name}'.bed'
 	    Column_Count=$(awk -F'\t' '{print NF; exit}' ${BED_Name}'.bed')
-	    echo '-------------------------'	
-	    echo ${BED_Name}'.bed column count:'
-	    echo ${Column_Count}
-	    echo '-------------------------'
+	    echo "${BED_Name}.bed column count: ${Column_Count}"
+
 	    echo "Done: convert BED3 to BED6 format"
 	fi
-	#Format the Line_Count:
-	#http://unix.stackexchange.com/questions/113795/add-thousands-separator-in-a-number
+	
 	Line_Count_Formatted=$(echo ${Line_Count} | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')
-	echo '-------------------------'	
-	echo ${BED_Name}'.bed line count:'
-	echo ${Line_Count_Formatted}
-	echo '-------------------------'
+	echo "${BED_Name}.bed line count: ${Line_Count_Formatted}"
     done
-    cd ..
+    popd
 done
 
-echo
 echo 'End: BED file check'
-echo
 
-echo "=========================================================="
-echo
 echo 'Number of replicates in each condition:'
-echo
-cd ${TMPDIR}/Input/Control
+
+pushd ${TMPDIR}/Input/Control
 NUM_REP_Control=$(ls -l | grep '.bed' | wc -l)
 echo 'NUM_REP_Control: '$NUM_REP_Control
-cd ../../
-cd ${TMPDIR}/Input/Treatment
+popd
+
+pushd ${TMPDIR}/Input/Treatment
 NUM_REP_Treatment=$(ls -l | grep '.bed' | wc -l)
 echo 'NUM_REP_Treatment: '$NUM_REP_Treatment
+popd
+
 #----------------------------------------------------------------------------------
 #Need to check if NUM_REP_CONDITION* equals 1
 #If there's only 1 replicate (1 sample):
 #------------------------------------------
 if [ "${NUM_REP_Control}" == "1" ] || [ "${NUM_REP_Treatment}" == "1" ] ;
 then
-    echo '#########'
     echo "WARNING:"
-    echo '#########'
     echo "Either your Control and/or Treatment has only 1 sample (no replicates)"
     echo "Note about n=1 comparisons (only 1 sample per condition)"
     echo "If the user tries to give diffReps conditions with only 1 sample it returns the following:"
-    echo "#---------------------------------------------------------------------------------"
     echo "To use Negative Binomial, you must have at least two replicates per condition."
     echo "Use G-test(preferred) or Chisquare test instead. Exit."
-    echo "#---------------------------------------------------------------------------------"
     echo "A modified diffReps command will be used for this analysis (using the G-test statistics)"
 fi
 echo "=========================================================="
@@ -376,130 +215,58 @@ echo "=========================================================="
 #Change dir back to scratch dir
 cd ${TMPDIR}
 
-echo 
 echo 'Save Control and Treatment file lists to variables'
-echo
 
-cd Input/Control
+pushd Input/Control
 Control_List=$(ls -l *.bed| awk '{print $9}' | tr "\n" " ")
 echo 'Control_List:'
 echo $Control_List
+
 #Need to move bed files to same dir as Perl script
 mv *.bed ../../
-cd ../../
+popd 
 
-cd Input/Treatment
+pushd Input/Treatment
 Treatment_List=$(ls -l *.bed| awk '{print $9}' | tr "\n" " ")
 echo 'Treatment_List:'
 echo $Treatment_List
 #Need to move bed files to same dir as Perl script
 mv *.bed ../../
-cd ../../
+popd
 
-echo
 echo 'List files in scratch directory:'
-echo
 ls -alh
 
-echo
 echo 'Starting to run my commands'
-echo
 
 # run my commands.
-echo
 echo 'Starting diffReps.pl'
-echo
-#Script usage:
-##################################################################################
-#[aramp10@scc1 ~]$ diffReps.pl 
 
-#diffReps - Detect Differential Sites from ChIP-seq with Biological Replicates.
-
-#Usage: diffReps.pl --treatment bed_file1...[bed_fileN] --control bed_file1...[bed_fileN] --report output_results \
-    #           [--gname genome_name|--chrlen chrom_length_file]
-
-#**Chromosome lengths can be specified through a text file or given a genome name.
-#**Currently built-in genomes: mm9, hg19, rn4.
-
-#Optional parameters(defaults in parentheses):
-#- Background samples(DNA input or IgG control):
-#    --btr            Treatment group background: bed_file1...[bed_fileN].
-#    --bco            Control group background: bed_file1...[bed_fileN].
-#    Hint: If background is only specified for one group, it will automatically be used for both groups.
-
-#- Genomic region parameters:
-#    --mode(peak)     Scanning mode: a selection implies a different window size.
-#                     Set window and step size manually to override.
-#                     (p)eak      (=1000)  Histone mark peak (Default).
-#                     (n)ucleosome(=200)   Single nucleosome (+DNAlinker).
-#                     (b)lock     (=10000) Large chromatin modification block.
-#    --window(1000)   Window size (default=Histone mark peak size).
-#    --step(1/10 win) Window moving step size.
-#    --gap(0)         Gap allowed between two consecutive windows.
-
-#- Background filtering using: mean + nsd*deviation.
-#    --std            Use standard estimation of mean and deviation (Default=Robust estimation).
-#                     In robust estimation, median absolute deviation is used in place of standard deviation.
-#    --nsd(broad)     Z-score cutoff for low read count. Choose from two default modes or set your own.
-#                     (b)road     (=2)   Broad peak such as H3K36me3.
-#                     (s)harp     (=20)  Sharp peak such as H3K4me3 or Transcription factors.
-#    --alpha(0.05)    Alpha for right-trimmed mean, must be in: [0, 0.5).
-#    --bkg(0)         Use fold enrichment vs. background as filter instead. Set a float number such as 2.0 here.
-#                     Default is to use the Z-score as filter.
-
-#- Statistical testing parameters:
-#    --meth(nb)       Statistical test (nb=Negative binomial; gt=G-test; tt=T-test; cs=Chi-square test).
-#    --pval(0.0001)   P-value cutoff for significant windows.
-
-#- Normalization can be done externally and be supplied as a text file:
-#    --nrpass(1)      Do normalization on bins pass nsd cutoff?
-#    --norm           File name to specify pre-determined norm constants (Default=Estimate by diffReps).
-
-#- Misc. parameters:
-#    --frag(100)      ChIP-seq library fragment size. Use to shift read positions.
-#    --nproc(1)       Number of processors to use.
-#    --noanno         Switch off genomic annotation for differential sites (Default=Do annotation).
-#    --nohs           Switch off looking for chromatin modification hotspots (Default=Find hotspots).
-##################################################################################
-#---------------------------------------------------------------------------------
 #Regarding diffReps options:
 #https://groups.google.com/forum/?hl=en#!searchin/diffreps-discuss/fragment$20size/diffreps-discuss/YdM_uY7klZY/B7bDORP-0jQJ
 #p.s.: if you don't want to do any shift, you can set fragment size to 0. 
 #For our DHS data, we don't want any read shifting
+
 #Also for data of sharp peaks:
 #http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3677880/
 #“–nsd” option (see Design and Implementation) is set to “sharp” because H3K4me3 tends to generate sharp peaks.
+
 #Increasing the “–nsd” means filtering more windows with small read counts
 #This should eliminate BG regions
 #Turns out "--nsd sharp" greatly reduces the number of differential sites
 #I'll use "--nsd broad"
+
 #Try manually setting the window and step size (instead of using --mode n)
 #Use $NSLOTS env. variable to use multiple cores
-#---------------------------------------------------------------------------------
-if [ "${NUM_REP_Control}" == "1" ] || [ "${NUM_REP_Treatment}" == "1" ] ;
-then
-    #---------------------------------------------------------------------------------
-    #Replicates not present:
-    #Use option: --meth gt
-    echo 'Print the command:'
-    echo "time diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt"
-    echo 'Run the command:'
-    time diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt
-    #---------------------------------------------------------------------------------
-else
-    #---------------------------------------------------------------------------------
-    #Replicates present:
-    echo 'Print the command:'
-    echo "time diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS"
-    echo 'Run the command:'
-    time diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS
-    #---------------------------------------------------------------------------------
-fi
-#End of if statement
 
-echo
+if [ "${NUM_REP_Control}" == "1" ] || [ "${NUM_REP_Treatment}" == "1" ]; then
+    (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt)
+
+else
+   (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS)
+fi
+
 echo 'Ending diffReps.pl'
-echo
 
 #Copy files back to storage
 #Output files have the pattern: output_results*
@@ -508,30 +275,23 @@ cp 'diffReps_'* $OUTPUT_DIR
 #Make the rest of the script easier to read: save long output file name as another variable
 Output_Name='diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME}
 
-#---------------------------------------------------------------------------------
-echo '#---------------------------------------------------------------------------------'
-echo 'BEFORE ENCODE_Blacklist filter:'
-echo '#---------------------------------------------------------------------------------'
-echo 'Output file line count:'
-Count1_Before=$(wc -l < $OUTPUT_DIR/${Output_Name})
-echo ${Count1_Before}
-#---------------------------------------------------------------------------------
-echo 'Output.annotated file line count:'
-Count2_Before=$(wc -l < $OUTPUT_DIR/${Output_Name}'.annotated')
-echo ${Count2_Before}
-#---------------------------------------------------------------------------------
-echo 'Output.hotspot file line count:'
-Count3_Before=$(wc -l < $OUTPUT_DIR/${Output_Name}'.hotspot')
-echo ${Count3_Before}
-#---------------------------------------------------------------------------------
 
-#---------------------------------------------------------------------------------
-cd $OUTPUT_DIR
+echo 'BEFORE ENCODE_Blacklist filter:'
+
+Count1_Before=$(wc -l < $OUTPUT_DIR/${Output_Name})
+echo "Output file line count: ${Count1_Before}"
+
+Count2_Before=$(wc -l < $OUTPUT_DIR/${Output_Name}'.annotated')
+echo "Output.annotated file line count: ${Count2_Before}"
+
+Count3_Before=$(wc -l < $OUTPUT_DIR/${Output_Name}'.hotspot')
+echo "Output.hotspot file line count: echo ${Count3_Before}"
+
+pushd $OUTPUT_DIR
+
 #Copy files to output folder:
 cp ${TMPDIR}/mm9-blacklist.bed ./
-echo '#---------------------------------------------------------------------------------'
 echo 'Overlap BED file with mm9-blacklist.bed and filter out overlap'
-echo '#---------------------------------------------------------------------------------'
 #Need to filter the ${Output_Name} file
 #This file has a header section from line 1 to line 32
 #Rather than hard-code the line numbers, better to search for "#" in the first character
@@ -549,7 +309,7 @@ intersectBed -v -a Coordinates2.txt -b mm9-blacklist.bed > filtered.txt
 cat Header1.txt Header2.txt filtered.txt > ${Output_Name}.filtered
 #Replace original file:
 mv ${Output_Name}.filtered ${Output_Name}
-#---------------------------------------------------------------------------------
+
 #Need to filter the ${Output_Name}'.annotated' file
 #Save header line
 head -1 ${Output_Name}'.annotated' > Header1.txt
@@ -561,7 +321,7 @@ intersectBed -v -a Coordinates1.txt -b mm9-blacklist.bed > filtered.txt
 cat Header1.txt filtered.txt > ${Output_Name}'.annotated'.filtered
 #Replace original file:
 mv ${Output_Name}'.annotated'.filtered ${Output_Name}'.annotated'
-#---------------------------------------------------------------------------------
+
 #Need to filter the ${Output_Name}'.hotspot' file
 #This file has a header section from line 1 to line 2
 #Rather than hard-code the line numbers, better to search for "#" in the first character
@@ -579,17 +339,16 @@ intersectBed -v -a Coordinates2.txt -b mm9-blacklist.bed > filtered.txt
 cat Header1.txt Header2.txt filtered.txt > ${Output_Name}.filtered
 #Replace original file:
 mv ${Output_Name}.filtered ${Output_Name}'.hotspot'
-#---------------------------------------------------------------------------------
+
 #Remove temp files:
 rm Header*.txt
 rm Coordinates*.txt
 rm filtered.txt
 rm mm9-blacklist.bed
-cd ..
-#---------------------------------------------------------------------------------
-echo '#---------------------------------------------------------------------------------'
+popd
+
+
 echo 'AFTER ENCODE_Blacklist filter:'
-echo '#---------------------------------------------------------------------------------'
 echo 'Output file line count:'
 Count1_Filename=${Output_Name}
 Count1_After=$(wc -l < $OUTPUT_DIR/${Output_Name})
@@ -598,7 +357,7 @@ echo ${Count1_After}
 Count1_Diff=$(echo "$Count1_Before - $Count1_After" | bc)
 echo 'Number of regions lost:'
 echo ${Count1_Diff}
-#---------------------------------------------------------------------------------
+
 echo 'Output.annotated file line count:'
 Count2_Filename=${Output_Name}'.annotated'
 Count2_After=$(wc -l < $OUTPUT_DIR/${Output_Name}'.annotated')
@@ -607,7 +366,7 @@ echo ${Count2_After}
 Count2_Diff=$(echo "$Count2_Before - $Count2_After" | bc)
 echo 'Number of regions lost:'
 echo ${Count2_Diff}
-#---------------------------------------------------------------------------------
+
 echo 'Output.hotspot file line count:'
 Count3_Filename=${Output_Name}'.hotspot'
 Count3_After=$(wc -l < $OUTPUT_DIR/${Output_Name}'.hotspot')
@@ -616,108 +375,53 @@ echo ${Count3_After}
 Count3_Diff=$(echo "$Count3_Before - $Count3_After" | bc)
 echo 'Number of regions lost:'
 echo ${Count3_Diff}
-#---------------------------------------------------------------------------------
 
-#---------------------------------------------------------------------------------
 Overlap_Summary=$OUTPUT_DIR/ENCODE_Blacklist_Overlap_Summary.txt
-######################
-if [ -f $Overlap_Summary ]
-then 
-    rm $Overlap_Summary
-else
-    touch $Overlap_Summary
-fi
-######################
-#---------------------------------------------------------------------------------
+rm -rf ${Overlap_Summary}
+
 echo 'Creating '${Overlap_Summary}
 #Print header(s) to output file:
-echo 'Filtering ENCODE blacklisted sites' >> ${Overlap_Summary}
+echo 'Filtering ENCODE blacklisted sites' > ${Overlap_Summary}
 echo Filename $'\t'Before_Filter $'\t'After_Filter $'\t'Sites_Lost >> ${Overlap_Summary}
 echo 'Printing to output file'
 echo ${Count1_Filename} $'\t'${Count1_Before} $'\t'${Count1_After} $'\t'${Count1_Diff} >> ${Overlap_Summary}
 echo ${Count2_Filename} $'\t'${Count2_Before} $'\t'${Count2_After} $'\t'${Count2_Diff} >> ${Overlap_Summary}
 echo ${Count3_Filename} $'\t'${Count3_Before} $'\t'${Count3_After} $'\t'${Count3_Diff} >> ${Overlap_Summary}
 echo 'Finished '${Overlap_Summary}
-#---------------------------------------------------------------------------------
 
-echo
 echo 'Starting diffReps_Summary.* scripts'
-echo
 
 #Copy diffReps_Summary.* scripts to the output folder:
 cp ${TMPDIR}/diffReps_Summary.* $OUTPUT_DIR
 
-echo
 echo 'Create and populate Peaks_Called folder'
-echo
 
-#Create Peaks_Called_DIR:
 Peaks_Called_DIR=$OUTPUT_DIR/Peaks_Called
-#Using an if statement to make the output folder if it does not exists
-if [ ! -d $Peaks_Called_DIR ]; then
-    mkdir $Peaks_Called_DIR; 
-else
-    rm -rf $Peaks_Called_DIR/*
-fi
-#---------------------------------------------------------------------------------
-echo
+rm -rf ${Peaks_Called_DIR} && mkdir -p ${Peaks_Called_DIR}
+
 echo 'Copy control samples peak BED files'
-echo
-################################################
-#The text file is formatted like the following:
-#----------------------------------------------
-#Sample_DIR	Sample_ID	Description
-#Sample_Waxman-TP17	G83_M1	Male 8wk-pool 1
-#Sample_Waxman-TP18	G83_M2	Male 8wk-pool 2
-#Sample_Waxman-TP19	G83_M3	Female 8wk-pool 1
-#Sample_Waxman-TP20	G83_M4	Female 8wk-pool 2
-#----------------------------------------------
-#The 1st column: The Sample_DIR name
-#The 2nd column: Waxman Lab Sample_ID 
-#The 3rd column: Sample's description 
-################################################
+
 #Text file has a header line to ignore:
 tail -n +2 Control_Samples.txt > Control_Samples.temp
-#Use a while loop to run jobs
 while IFS=$'\t' read -r -a myArray
 do
-    #---------------------------
-    ##Check that text file is read in properly:
-    #echo 'Sample_DIR:'
     Sample_DIR=${myArray[0]}
-    #echo 'Sample_ID:'
     Sample_ID=${myArray[1]}
-    #echo $Sample_ID
-    #echo 'Description:'
     Description=${myArray[2]}
-    #echo $Description
-    #---------------------------
-    #Copy control sample peak files
-    ##################################################################################
-    #This copy command will be controlled by the value of ${Input_Sites_RiPPM}
-    #Check the value of ${Input_Sites_RiPPM}
-    #---------------------------------------------------------------------------------
     if [ "${Input_Sites_RiPPM}" == "MACS2" ] ;
     then
 	echo 'Note: ${Input_Sites_RiPPM} was set to MACS2.'
 	echo 'Therefore, the corresponding macs2 BED file will be copied to the Peaks_Called folder.'
-	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
+	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_narrow_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
     fi
-    #---------------------------------------------------------------------------------
+
     if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
     then
 	echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
 	echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-	#Change directory to the sample-specific SICER folder
-	cd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-	#General way to refer to the main output file
-	Peaks_Called_File=$(ls *.scoreisland)
-	#Need to add the ".bed" extension:
-	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
-	#Change directory back to SCRIPT_DIR
-	cd ${SCRIPT_DIR}
+	find ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output -name "*.scoreiland" | xargs -I % echo mv %  ${Peaks_Called_DIR}/%.bed
     fi
-    #---------------------------------------------------------------------------------
+
     #Check if the ${Input_Sites_RiPPM} was set properly
     #Need the "and" conditional (&&):
     #I want to check if the variable does not match both values
@@ -727,110 +431,58 @@ do
 	echo 'Zero input sites will be used for the Peaks_Called folder.'
 	echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
     fi
-    #---------------------------------------------------------------------------------
-    ##################################################################################
-    #---------------------------
+
 done < Control_Samples.temp
-#Remove the temp file:
 rm Control_Samples.temp
-###############################################
-#---------------------------------------------------------------------------------
-echo
+
 echo 'Copy treatment samples peak BED files'
-echo
-################################################
-#The text file is formatted like the following:
-#----------------------------------------------
-#Sample_DIR	Sample_ID	Description
-#Sample_Waxman-TP17	G83_M1	Male 8wk-pool 1
-#Sample_Waxman-TP18	G83_M2	Male 8wk-pool 2
-#Sample_Waxman-TP19	G83_M3	Female 8wk-pool 1
-#Sample_Waxman-TP20	G83_M4	Female 8wk-pool 2
-#----------------------------------------------
-#The 1st column: The Sample_DIR name
-#The 2nd column: Waxman Lab Sample_ID 
-#The 3rd column: Sample's description 
-################################################
-#Text file has a header line to ignore:
 tail -n +2 Treatment_Samples.txt > Treatment_Samples.temp
-#Use a while loop to run jobs
 while IFS=$'\t' read -r -a myArray
 do
-    #---------------------------
-    ##Check that text file is read in properly:
-    #echo 'Sample_DIR:'
     Sample_DIR=${myArray[0]}
-    #echo 'Sample_ID:'
     Sample_ID=${myArray[1]}
-    #echo $Sample_ID
-    #echo 'Description:'
     Description=${myArray[2]}
-    #echo $Description
-    #---------------------------
-    #Copy treatment sample peak files 
-    ##################################################################################
-    #This copy command will be controlled by the value of ${Input_Sites_RiPPM}
-    #Check the value of ${Input_Sites_RiPPM}
-    #---------------------------------------------------------------------------------
     if [ "${Input_Sites_RiPPM}" == "MACS2" ] ;
     then
 	echo 'Note: ${Input_Sites_RiPPM} was set to MACS2.'
 	echo 'Therefore, the corresponding macs2 BED file will be copied to the Peaks_Called folder.'
-	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
+	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_narrow_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
     fi
-    #---------------------------------------------------------------------------------
+
     if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
     then
 	echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
 	echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-	#Change directory to the sample-specific SICER folder
-	cd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-	#General way to refer to the main output file
-	Peaks_Called_File=$(ls *.scoreisland)
-	#Need to add the ".bed" extension:
-	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
-	#Change directory back to SCRIPT_DIR
-	cd ${SCRIPT_DIR}
+	find "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" -name "*.scoreiland" | xargs -I % echo mv %  ${Peaks_Called_DIR}/%.bed
     fi
-    #---------------------------------------------------------------------------------
-    #Check if the ${Input_Sites_RiPPM} was set properly
-    #Need the "and" conditional (&&):
-    #I want to check if the variable does not match both values
+
     if [ "${Input_Sites_RiPPM}" != "MACS2" ] && [ "${Input_Sites_RiPPM}" != "SICER" ]
     then
 	echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
 	echo 'Zero input sites will be used for the Peaks_Called folder.'
 	echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
     fi
-    #---------------------------------------------------------------------------------
-    ##################################################################################
-    #---------------------------
+
 done < Treatment_Samples.temp
-#Remove the temp file:
 rm Treatment_Samples.temp
-###############################################
-#---------------------------------------------------------------------------------
+
 #Copy extra user provided BED files from Additional_Peak_Calls into Peaks_Called_DIR
 #cp ${TMPDIR}/BED_Regions/*.bed ${Peaks_Called_DIR}
-#---------------------------------------------------------------------------------
+
 #Move Additional_Peak_Calls folder to OUTPUT_DIR
 #The diffReps_Summary.sh script will deal with the BED files
 mv ${TMPDIR}/Additional_Peak_Calls ${OUTPUT_DIR}
-#---------------------------------------------------------------------------------
+
 #Change dir to call script:
 cd $OUTPUT_DIR
 
-echo
 echo 'Running diffReps_Summary.sh'
-echo
 #2-fold delta-sites:
 set +eu
 ./diffReps_Summary.sh 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME}.annotated ${Control_Samples_NAME} ${Treatment_Samples_NAME} diffReps_${COMPAR_NUM} 1
 set -eu
 
-echo
 echo 'Ending diffReps_Summary.* scripts'
-echo
 
 #Need to concatenate the:
 #1. ${Overlap_Summary} (ENCODE_Blacklist_Overlap_Summary.txt)
@@ -846,9 +498,7 @@ cd ..
 rm $OUTPUT_DIR/diffReps_Summary.*
 #---------------------------------------------------------------------------------
 
-echo
 echo "List files:"
-echo
 ls -alh
 
 echo "=========================================================="
