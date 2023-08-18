@@ -94,6 +94,11 @@ mkdir -p $OUTPUT_DIR
 cp ${SCRIPT_DIR}/Control_Samples.txt .
 cp ${SCRIPT_DIR}/Treatment_Samples.txt .
 
+set +eu
+## copying norm factors for diffReps
+cp ${SCRIPT_DIR}/norm.txt .
+set -eu
+
 #Copy over diffReps_Summary.* scripts
 cp ${SCRIPT_DIR}/Job_Scripts/diffReps_Summary.* .
 
@@ -236,7 +241,7 @@ popd
 
 echo 'List files in scratch directory:'
 ls -alh
-
+tree
 echo 'Starting to run my commands'
 
 # run my commands.
@@ -263,7 +268,11 @@ if [ "${NUM_REP_Control}" == "1" ] || [ "${NUM_REP_Treatment}" == "1" ]; then
     (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt)
 
 else
-   (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS)
+    if [ -f "norm.txt" ]; then
+	(cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --norm norm.txt)
+    else
+	(cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS)
+    fi
 fi
 
 echo 'Ending diffReps.pl'
@@ -345,7 +354,7 @@ rm Header*.txt
 rm Coordinates*.txt
 rm filtered.txt
 rm mm9-blacklist.bed
-popd
+popd ## ${OUTPUT_DIR}
 
 
 echo 'AFTER ENCODE_Blacklist filter:'
@@ -417,9 +426,14 @@ do
 
     if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
     then
-	echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
-	echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-	find ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output -name "*.scoreiland" | xargs -I % echo mv %  ${Peaks_Called_DIR}/%.bed
+	# echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
+	# echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
+	# find ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output -name "*.scoreiland" | xargs -I % cp %  ${Peaks_Called_DIR}/%.bed
+
+	pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+	Peaks_Called_File=$(ls *.scoreisland)
+	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
+	popd
     fi
 
     #Check if the ${Input_Sites_RiPPM} was set properly
@@ -451,9 +465,14 @@ do
 
     if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
     then
-	echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
-	echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-	find "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" -name "*.scoreiland" | xargs -I % echo mv %  ${Peaks_Called_DIR}/%.bed
+	# echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
+	# echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
+	# find "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" -name "*.scoreiland" | xargs -I % cp % ${Peaks_Called_DIR}/%.bed
+
+	pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+	Peaks_Called_File=$(ls *.scoreisland)
+	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
+	popd
     fi
 
     if [ "${Input_Sites_RiPPM}" != "MACS2" ] && [ "${Input_Sites_RiPPM}" != "SICER" ]
@@ -471,16 +490,18 @@ rm Treatment_Samples.temp
 
 #Move Additional_Peak_Calls folder to OUTPUT_DIR
 #The diffReps_Summary.sh script will deal with the BED files
-mv ${TMPDIR}/Additional_Peak_Calls ${OUTPUT_DIR}
+set +eu
+cp -a ${TMPDIR}/Additional_Peak_Calls ${OUTPUT_DIR}
+set -eu
 
 #Change dir to call script:
 cd $OUTPUT_DIR
 
 echo 'Running diffReps_Summary.sh'
 #2-fold delta-sites:
-set +eu
-./diffReps_Summary.sh 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME}.annotated ${Control_Samples_NAME} ${Treatment_Samples_NAME} diffReps_${COMPAR_NUM} 1
-set -eu
+# set +eu
+(set -x; ./diffReps_Summary.sh 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME}.annotated ${Control_Samples_NAME} ${Treatment_Samples_NAME} diffReps_${COMPAR_NUM} 1)
+# set -eu
 
 echo 'Ending diffReps_Summary.* scripts'
 

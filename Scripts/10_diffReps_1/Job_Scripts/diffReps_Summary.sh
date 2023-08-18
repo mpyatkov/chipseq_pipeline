@@ -166,7 +166,7 @@ echo 'Running Rscript ...'
 
 cd $Current_DIR
 
-Rscript diffReps_Summary.R $1 $2 $3 $4 Unfiltered_Summary $5
+(set -x; Rscript diffReps_Summary.R $1 $2 $3 $4 Unfiltered_Summary $5)
 
 
 echo 'Generate BG sites (Peak_Union sites that do not overlap condition-specific sites) ...'
@@ -300,7 +300,7 @@ echo 'Running Rscript ...'
 cd $Current_DIR
 #Copy the $1'.peaks' file for the R script:
 cp ${Overlap_Output_DIR}/$1'.peaks' $Current_DIR
-Rscript diffReps_Summary.R $1'.peaks' $2 $3 $4 Peaks_Filtered_Summary $5
+(set -x; Rscript diffReps_Summary.R $1'.peaks' $2 $3 $4 Peaks_Filtered_Summary $5)
 
 rm $Current_DIR/$1'.peaks'
 echo '#---------------------------------------------------------------------------'
