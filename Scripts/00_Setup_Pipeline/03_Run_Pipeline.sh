@@ -36,6 +36,17 @@ Start_Time=$(date +"%s")
 #---------------------------------------------------------------------------------
 #Source the setup file to initialize variables
 source ./01_Pipeline_Setup.sh
+
+if ( [ ! -d ${VM_DIR_FASTQC} ] ); then
+    echo "Creating: ${VM_DIR_FASTQC}"
+    mkdir -p ${VM_DIR_FASTQC}
+fi
+
+if ( [ ! -d ${VM_DIR_UCSC} ] ); then
+    echo "Creating: ${VM_DIR_UCSC}"
+    mkdir -p ${VM_DIR_UCSC}
+fi
+
 #Save 00_Setup_Pipeline location:
 Setup_Pipeline_DIR=$(pwd)
 #---------------------------------------------------------------------------------
