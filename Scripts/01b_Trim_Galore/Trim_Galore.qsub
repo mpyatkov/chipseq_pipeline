@@ -6,12 +6,12 @@ set -e
 ##################################################################################
 # Specify which shell to use
 #$ -S /bin/bash
-# Run on the current working directory
 #$ -cwd
-
-# Join standard output and error to a single file  
 #$ -j y
-# change to y if you want a single qlog file 
+#Seems like cutadapt/trim_galore automatically uses multiple cores
+#If only using 1 core you'll get emails from the SCC process reaper
+#You can use option "-pe omp N", where N is the number of cores ( number of course on our system can be any integer between 1 and 16):
+#$ -pe omp 8
 
 ##################################################################################
 #Initialize variables from Run_Jobs.sh
@@ -29,12 +29,6 @@ Dataset_DIR=$2
 Sample_Labels_DIR=$3
 SCRIPT_DIR=$4
 READ_LEN=$5
-
-#http://www.ibm.com/developerworks/library/l-bash-parameters/
-#Note: If you have more than 9 parameters, you cannot use $10 to refer to the tenth one. You must first either process or save the first parameter ($1), then use the shift command to drop parameter 1 and move all remaining parameters down 1, so that $10 becomes $9 and so on.
-
-#http://unix.stackexchange.com/questions/104420/how-to-use-command-line-arguments-in-a-shell-script
-#If you need access more than 9 command line arguments, you can use the shift command. Example: shift 2 renames $3 to $1, $4 to $2 etc.
 
 #Print variables (make sure they appear correctly):
 echo "-----------------------"
@@ -54,12 +48,6 @@ echo "-----------------------"
 echo "End of variable list"
 echo "-----------------------"
 
-#Seems like cutadapt/trim_galore automatically uses multiple cores
-#If only using 1 core you'll get emails from the SCC process reaper
-#You can use option "-pe omp N", where N is the number of cores ( number of course on our system can be any integer between 1 and 16):
-#$ -pe omp 8
-
-# Now let's keep track of some information just in case anything goes wrong
 echo "=========================================================="
 #Use to calculate job time:
 #Start_Time in seconds
@@ -74,47 +62,16 @@ echo "Parameter for multiple cores : $NSLOTS"
 echo "=========================================================="
 
 # Go to local scratch directory
-echo
 echo 'Change dir to scratch directory'
-echo
 cd ${TMPDIR}
-echo
-echo 'Print scratch directory location:'
-echo
-echo $TMPDIR
-#--------------------------------------
-echo
+
 echo 'Loading required modules...'
-echo
-#Make sure the shebang line = #!/bin/bash -l
-set -e
-#Need the -l option to load modules
-#Search for latest program installed:
-#module avail -t 2>&1 | grep -i trim
-#Directly calling executable
-#Still need to call:
-#cutadapt
-#module load python2/2.7.16
-#Charles A Jahnke was able to install trim_galore on the SCC:
-module load cutadapt/1.18
-module load fastqc
-module load trimgalore/0.4.4
-##################################################################################
-#module help python
-#----------- Module Specific Help for 'python/2.7.11' --------------
-#python 2.7.11 A general purpose, interpretive programming language.
-#For more information on python, please see
-#* Our help page: http://www.bu.edu/tech/support/research/software-and-programming/common-languages/python/
-#* Our tutorial page: http://www.bu.edu/tech/support/research/training-consulting/live-tutorials/#PROGRAMMING
-#* The vendor's website: http://www.python.org
-#For more information on python, please see https://www.python.org
-#-----------------------------------------------------
-#module help fastqc
-#----------- Module Specific Help for 'fastqc/0.11.5' --------------
-#fastqc 0.11.5: A quality control tool for high throughput sequence data.
-#FastQC aims to provide a simple way to do some quality control checks on raw sequence data coming from high throughput sequencing pipelines. It provides a modular set of analyses which you can use to give a quick impression of whether your data has any problems of which you should be aware before doing any further analysis.
-#For more information on fastqc, please see http://www.bioinformatics.babraham.ac.uk/projects/fastqc
-#-----------------------------------------------------
+
+module load trimgalore
+module load cutadapt
+# module load cutadapt/1.18
+# module load trimgalore/0.4.4
+
 #module help trim_galore
 #----------- Module Specific Help for 'trim_galore/0.4.2' ----------
 #trim_galore 0.4.2: A wrapper around Cutadapt and FastQC to consistently apply adapter and quality trimming to FastQ files, with extra functionality for RRBS data.
@@ -135,134 +92,50 @@ module load trimgalore/0.4.4
 #For more information on trim_galore, please see http://www.bioinformatics.babraham.ac.uk/projects/trim_galore/
 ##################################################################################
 
-#-----------------------------------------------------
-# copy user input data files to scratch
-#Copy over the *R1*.fastq.gz file(s):
-cp ${Dataset_DIR}/${Sample_ID}/fastq/*R1*.fastq.gz .
-#Copy over the *R2*.fastq.gz file(s):
-cp ${Dataset_DIR}/${Sample_ID}/fastq/*R2*.fastq.gz .
-#-----------------------------------------------------
 
-#We need a comma separated list for the *_1 ("left") set of files:
-READ1_FILE_NAME=*R1*.fastq.gz	
-for i in ${READ1_FILE_NAME}; 
-do
-    READ1=`echo $READ1$i,`; 
-done
-Left_List=${READ1%?}
-echo
-echo "Here is the Left_List:"
-echo ${Left_List}
-echo
-#-----------------------------------------------------
-#We need a comma separated list for the **_2 ("right") set of files:
-READ2_FILE_NAME=*R2*.fastq.gz	
-for i in ${READ2_FILE_NAME}; 
-do
-    READ2=`echo $READ2$i,`; 
-done
-Right_List=${READ2%?}
-echo
-echo "Here is the Right_List:"
-echo ${Right_List}
-echo
-#-----------------------------------------------------
+# copy user input data files to scratch
+cp ${Dataset_DIR}/${Sample_ID}/fastq/*R1*.fastq.gz .
+cp ${Dataset_DIR}/${Sample_ID}/fastq/*R2*.fastq.gz .
+
+Left_List=$(find . -name "*R1*.fastq.gz" | xargs -I% basename % | paste -s -d ",")
+Right_List=$(find . -name "*R2*.fastq.gz" | xargs -I% basename % | paste -s -d ",")
+
 #Make output dir:
 STORAGE_DIR=${Dataset_DIR}/${Sample_ID}/fastq
 OUTPUT_DIR=$TMPDIR/trim_galore_output
-##############################
-if [[ ! -d $OUTPUT_DIR ]]; 
-then
-    mkdir $OUTPUT_DIR
-fi
-##############################
-########################################################
+
+mkdir -p $OUTPUT_DIR
 #Remove output dir from storage (running multiple times)
-if [ -d ${STORAGE_DIR}/trim_galore_output ]; 
-then
-    rm -r ${STORAGE_DIR}/trim_galore_output
-fi
-########################################################
-echo
+rm -rf ${STORAGE_DIR}/trim_galore_output
+
 echo 'List files in the scratch directory:'
-echo
 
 ls -alh
 
-echo
 echo 'Starting to run my commands'
-echo
-
-#echo
-#echo 'Unzip files:'
-#echo
-
-#time gzip -d *.gz
-
-#echo
-#echo 'Finished unzipping'
-#echo
 
 # run my commands.
-echo
-echo 'Starting trim_galore'
-echo
-#trim_galore is a wrapper for cutadapt:
-#http://www.bioinformatics.babraham.ac.uk/projects/trim_galore/
-##################################################################################
-#cutadapt --help
-#---------------------------------------------------------------------------------
-#Useful suggestion for removing reads with adaptor sequences:
-#https://www.biostars.org/p/68396/
-#Could run trim_galore with the length option equal to the read length
-#This way any reads with adaptor sequence will be trimmed to some length less than the original read length, in which case, reads shorter than the original read length will be filtered out
-#Based on the above I should use the read length (50bp) for the length option
-#---------------------------------------------------------------------------------
-#--stringency <INT>
-#Information about this option:
-#http://www.bioinformatics.babraham.ac.uk/projects/trim_galore/trim_galore_User_Guide_v0.3.7.pdf
-#Since we know the adaptor to be trimmed:
-#Trim Galore identified the same adaptor sequence (AGATCGGAAGAGC)
-#The stringency should be the length of the adaptor sequence: 13
-#---------------------------------------------------------------------------------
-#--quality <INT>
-#Don't want to trim based on quality score:
-#--quality 0
-#---------------------------------------------------------------------------------
-#By default, it makes sense to not keep the FASTQ file
-#Do not use the (--keep) option
-#However, if the user needs to have the FASTQ file, then use the (--keep) option
-#---------------------------------------------------------------------------------
-#Print the command:
-echo "trim_galore --quality 0 --stringency 13 --length ${READ_LEN} --paired ${Left_List} ${Right_List} --output_dir ${OUTPUT_DIR}"
-#Run the command:
-trim_galore --quality 0 --stringency 13 --length ${READ_LEN} --paired ${Left_List} ${Right_List} --output_dir ${OUTPUT_DIR}
-#---------------------------------------------------------------------------------
-echo
+
+(set -x; trim_galore --quality 0 --stringency 13 --length ${READ_LEN} --paired ${Left_List} ${Right_List} --output_dir ${OUTPUT_DIR})
+
 echo 'Finished trim_galore command'
-echo
 
 ls -l ${OUTPUT_DIR}
+
 #Even with omitting the (--keep) option, still need to remove the FASTQ file:
-set +e
-rm ${OUTPUT_DIR}/*.fastq.gz
-set -e
+# set +e
+# rm ${OUTPUT_DIR}/*.fastq.gz
+# set -e
 
-echo
 echo 'Copy OUTPUT_DIR file to storage'
-echo
-cp -r ${OUTPUT_DIR} ${STORAGE_DIR}
+cp -a ${OUTPUT_DIR} ${STORAGE_DIR}
 
-echo
 echo "List files in scratch"
-echo
 ls -alh
 
 cd ${OUTPUT_DIR}
 
-echo
 echo "List files in OUTPUT_DIR"
-echo
 ls -alh
 
 echo "=========================================================="

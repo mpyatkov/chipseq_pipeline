@@ -10,12 +10,9 @@ set -eu
 ################################################
 #Remove *.o files from previous jobs
 #Need the 2>/dev/null to supress the "No such file or directory"
-count=`ls -1 *.o* 2>/dev/null  | wc -l`
-if [ $count != 0 ]
-then 
-rm -f *.o*
-rm -f *.e*
-fi 
+
+rm -rf *.o* *.po*
+
 ##################################################################################
 #---------------------------------------------------------------------------------
 #Source the setup file to initialize variables
