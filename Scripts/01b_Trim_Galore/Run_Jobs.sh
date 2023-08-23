@@ -8,8 +8,13 @@ set -eu
 #Example: 
 #./Run_Jobs.sh 
 ################################################
-#Remove *.o files from previous jobs
-#Need the 2>/dev/null to supress the "No such file or directory"
+
+# do not continue this step if configuration file is empty
+if [ ${RUN_TRIMGALORE} -eq 0 ]; then
+    echo "WARNING: Trim galore will not be run on samples."
+    exit 0
+fi
+
 
 rm -rf *.o* *.po*
 

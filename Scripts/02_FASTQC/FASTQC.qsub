@@ -109,10 +109,17 @@ module load fastqc
 #-----------------------------------------------------
 # copy user input data files to scratch
 #Copy over the *R1*.fastq.gz file(s):
-cp ${Dataset_DIR}/${Sample_ID}/fastq/*R1*.fastq.gz .
-#Copy over the *R2*.fastq.gz file(s):
-cp ${Dataset_DIR}/${Sample_ID}/fastq/*R2*.fastq.gz .
-#-----------------------------------------------------
+
+if [ -d "${Dataset_DIR}/${Sample_ID}/fastq/trim_galore_output" ]
+then
+    echo "COPYING TRIMMED FASTQ FILES"
+    cp ${Dataset_DIR}/${Sample_ID}/fastq/trim_galore_output/*R1*.fastq.gz .
+    cp ${Dataset_DIR}/${Sample_ID}/fastq/trim_galore_output/*R2*.fastq.gz .
+else
+    echo "COPYING NON-TRIMMED FASTQ FILES"
+    cp ${Dataset_DIR}/${Sample_ID}/fastq/*R1*.fastq.gz .
+    cp ${Dataset_DIR}/${Sample_ID}/fastq/*R2*.fastq.gz .
+fi
 
 #Create FASTQC output folder to store files:
 FASTQC_DIR=${Sample_ID}'_FASTQC'

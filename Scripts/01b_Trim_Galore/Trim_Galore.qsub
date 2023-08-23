@@ -116,7 +116,14 @@ echo 'Starting to run my commands'
 
 # run my commands.
 
-(set -x; trim_galore --quality 0 --stringency 13 --length ${READ_LEN} --paired ${Left_List} ${Right_List} --output_dir ${OUTPUT_DIR})
+# (set -x; trim_galore --quality 0 --stringency 13 --length ${READ_LEN} --paired ${Left_List} ${Right_List} --output_dir ${OUTPUT_DIR}) ## PREVIOUS
+
+(set -x; trim_galore --quality 0 --stringency 13 --fastqc --length ${READ_LEN} --paired ${Left_List} ${Right_List} --output_dir ${OUTPUT_DIR} --cores $NSLOTS) ## PREVIOUS
+
+pushd ${OUTPUT_DIR}
+## rename extensions to make it consistent with the downstream pipeline
+rename ".fq.gz" ".fastq.gz" *.fq.gz
+popd
 
 echo 'Finished trim_galore command'
 
