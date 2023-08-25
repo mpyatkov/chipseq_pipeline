@@ -103,13 +103,13 @@ zMax=1.0
 ##MEME_ChIP: MEME_MOD
 if [ ${MEME_MOD} -eq 0 ]
 then
-MEME_MOD="oops"
+    MEME_MOD="oops"
 elif [ ${MEME_MOD} -eq 1 ]
 then
-MEME_MOD="zoops"
+    MEME_MOD="zoops"
 elif [ ${MEME_MOD} -eq 2 ]
 then
-MEME_MOD="anr"
+    MEME_MOD="anr"
 fi
 #echo ${MEME_MOD}
 
