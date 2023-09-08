@@ -257,7 +257,9 @@ do
     #Print job runtimes to file
     cd ${step}
     echo ${step} >> ${OUTPUT_FILE}
+    set +eu
     grep 'elapsed' *.o* >> ${OUTPUT_FILE}
+    set -eu
     cd ..
 done
 #Also want to print the time to run this script:

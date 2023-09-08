@@ -7,10 +7,15 @@ set -eu
 #Usage: 
 #./Summarize_Jobs.sh
 ##################################################################################
-#---------------------------------------------------------------------------------
 #Source the setup file to initialize variables
 source ../00_Setup_Pipeline/01_Pipeline_Setup.sh
-#---------------------------------------------------------------------------------
+
+# do not continue this step if configuration file is empty
+if [ ${RUN_TRIMGALORE} -eq 0 ]; then
+    echo "WARNING: Trim galore will not be run on samples."
+    exit 0
+fi
+
 #Check that each variable prints a value to the terminal:
 echo "-----------------------"
 echo "Start of variable list:"
@@ -26,7 +31,6 @@ echo ${TIME_LIMIT}
 echo "-----------------------"
 echo "End of variable list"
 echo "-----------------------"
-#---------------------------------------------------------------------------------
 #Minor issue with jobs using multiple cores
 #Empty job output log files (*.pe* and *.po*) are created
 #Remove them if they exist:
@@ -44,17 +48,13 @@ if [ $count != 0 ]
 then 
 rm *.po*
 fi 
-#---------------------------------------------------------------------------------
 ##################################################################################
-#---------------------------------------------------------------------------------
 #Retrieve the job name for this step:
 #Extract the folder name:
 DIR_name=`basename ${SCRIPT_DIR}`
-#---------------------------------------------------------------------------------
 #Do not hard-code /Scripts/
 #Instead use: ${SCRIPT_DIR}/Job_Summary
 OUTPUT_DIR=${SCRIPT_DIR}/Job_Summary
-#---------------------------------------------------------------------------------
 ###############################
 if [ ! -d ${OUTPUT_DIR} ]; then
 mkdir -p ${OUTPUT_DIR}
@@ -81,13 +81,11 @@ SCRIPT_DIR=$(pwd)
 cp $Sample_Labels_DIR/Sample_Labels.txt $SCRIPT_DIR
 ################################################
 #The text file is formatted like the following:
-#----------------------------------------------
 #Sample_DIR	Sample_ID	Description
 #Sample_Waxman-TP17	G83_M1	Male 8wk-pool 1
 #Sample_Waxman-TP18	G83_M2	Male 8wk-pool 2
 #Sample_Waxman-TP19	G83_M3	Female 8wk-pool 1
 #Sample_Waxman-TP20	G83_M4	Female 8wk-pool 2	
-#----------------------------------------------
 #The 1st column: The Sample_DIR name
 #The 2nd column: Waxman Lab Sample_ID 
 #The 3rd column: Sample's description 
@@ -100,7 +98,6 @@ tail -n +2 Sample_Labels.txt > Sample_Labels.temp
 #Use a while loop to run jobs
 while IFS=$'\t' read -r -a myArray
 do
-#---------------------------
 ##Check that text file is read in properly:
 #echo 'Sample_DIR:'
 Sample_DIR=${myArray[0]}
@@ -110,11 +107,9 @@ Sample_ID=${myArray[1]}
 #echo 'Description:'
 Description=${myArray[2]}
 #echo $Description
-#---------------------------
 echo $Sample_ID
 #Need to cd to sample specific CollectInsertSizeMetrics folder
 cd ${Dataset_DIR}/$Sample_ID/fastq/trim_galore_output
-#---------------------------------------------------------------------------------
 #Use a list of files to deal with either 1 (SE) or 2 (PE) report files
 Report_List=*'_trimming_report.txt'
 for Report_File in ${Report_List}
@@ -137,7 +132,6 @@ echo "${Sample_ID}\t${Description}t${FASTQ_Name}\t${Total_Reads_Processed}\t${Re
 done
 #End of loop over Sample_Labels.temp
 done < Sample_Labels.temp
-#---------------------------------------------------------------------------------
 cd ${SCRIPT_DIR}
 #Remove the temp file:
 rm Sample_Labels.temp

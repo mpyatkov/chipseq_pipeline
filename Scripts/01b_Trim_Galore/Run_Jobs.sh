@@ -9,20 +9,17 @@ set -eu
 #./Run_Jobs.sh 
 ################################################
 
+#Source the setup file to initialize variables
+source ../00_Setup_Pipeline/01_Pipeline_Setup.sh
+
 # do not continue this step if configuration file is empty
 if [ ${RUN_TRIMGALORE} -eq 0 ]; then
     echo "WARNING: Trim galore will not be run on samples."
     exit 0
 fi
 
-
 rm -rf *.o* *.po*
 
-##################################################################################
-#---------------------------------------------------------------------------------
-#Source the setup file to initialize variables
-source ../00_Setup_Pipeline/01_Pipeline_Setup.sh
-#---------------------------------------------------------------------------------
 #Create a job name that's a function of the folder name:
 #Extract the folder name:
 DIR_name=`basename ${SCRIPT_DIR}`
