@@ -1,2 +1,0 @@
-Sample_DIR	Sample_ID	Description	Color
-G182_M1	G182_M1	CTCF_Control	128,0,0

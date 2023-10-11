@@ -1,0 +1,3 @@
+# num;treatment_name;control_name;treatment_samples;control_samples;normalization(RIPPM;DIFFREPS);diffreps_window
+1;G215_k27me3_Male;G215_k27me3_Female;G215M1,G215M2;G215M3,G215M4;RIPPM;1000
+2;G215_k27me3_Male;G215_k27me3_Female;G215M1,G215M2;G215M3,G215M4;DIFFREPS;1000
