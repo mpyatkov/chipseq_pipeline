@@ -13,7 +13,7 @@ while IFS=';' read -r num treatment_name control_name treatment_samples control_
     echo $norm
     echo $diffreps_window
     
-    template_name="10_diffreps_${treatment_name}_vs_${control_name}_${norm}_${num}"
+    template_name="10_diffreps_${num}_${treatment_name}_vs_${control_name}_${norm}"
     rm -rf "../${template_name}"
     
     cp -a ../TEMPLATE_10_diffreps "../${template_name}"
