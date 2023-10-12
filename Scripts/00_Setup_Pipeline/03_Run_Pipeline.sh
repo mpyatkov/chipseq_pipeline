@@ -37,6 +37,13 @@ Start_Time=$(date +"%s")
 #Source the setup file to initialize variables
 source ./01_Pipeline_Setup.sh
 
+# if we have only comments lines in diffreps config
+# then just skip the creation of steps 10
+numlines_diffreps_config=`cat diffreps_config.txt | sed -e '/^#/d' | wc -l`
+if [ "${numlines_diffreps_config}" -ne "0" ]; then
+  ./diffreps_parser.sh
+fi
+
 if ( [ ! -d ${VM_DIR_FASTQC} ] ); then
     echo "Creating: ${VM_DIR_FASTQC}"
     mkdir -p ${VM_DIR_FASTQC}
@@ -80,7 +87,7 @@ then
     #The "-n" option will not print anything unless an explicit request to print is found. 
     #The pattern is a 2-digit number and then a bunch of characters
     #Add sed command for regular expression (2-digit number at the beginning):
-    Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d')
+    Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/TEMPLATE_10_diffreps/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d')
     #For loop over steps in the pipeline
     for step in ${Pipeline_Steps}
     do
@@ -160,7 +167,7 @@ then
     #http://stackoverflow.com/questions/7103531/how-to-get-the-part-of-file-after-the-line-that-matches-grep-expression-first
     #Need: sed -n -e '/TERMINATE/,$p'
     #If using variable within sed command need to enclose the variable in single quotes
-    Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d' | sed -n -e '/'${Start_Step}'/,$p')
+    Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/TEMPLATE_10_diffreps/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d' | sed -n -e '/'${Start_Step}'/,$p')
     #Now the pipeline will start at ${Start_Step} and continue to the end
     #For loop over steps in the pipeline
     for step in ${Pipeline_Steps}
@@ -250,7 +257,7 @@ echo "Run time for each submitted job:" >> ${OUTPUT_FILE}
 echo "Job run times that deviate from the average should be inspected for possible errors (check the job log files)" >> ${OUTPUT_FILE}
 echo '#--------------------------------------------------------------' >> ${OUTPUT_FILE}
 cd ${Scripts_DIR}
-Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d')
+Pipeline_Steps=$(ls -l | awk 'FNR>1 {print $9}' | sed -n '/[0-9]/p' | sed '/00_Setup_Pipeline/d' | sed '/TEMPLATE_10_diffreps/d' | sed '/Rename_Folders/d' | sed '/Generate_Tracks/d')
 #For loop over steps in the pipeline
 for step in ${Pipeline_Steps}
 do
