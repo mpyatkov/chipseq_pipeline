@@ -4,7 +4,7 @@ set -eu
 
 config="./diffreps_config.txt"
 
-while IFS=';' read -r num treatment_name control_name treatment_samples control_samples norm diffreps_window; do
+while IFS=',' read -r num treatment_name control_name treatment_samples control_samples norm diffreps_window; do
     echo $num
     echo $treatment_name
     echo $control_name
