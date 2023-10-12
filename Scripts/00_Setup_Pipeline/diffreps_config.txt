@@ -1,3 +1,10 @@
-# num;treatment_name;control_name;treatment_samples;control_samples;normalization(RIPPM;DIFFREPS);diffreps_window
-1;G215_k27me3_Male;G215_k27me3_Female;G215M1,G215M2;G215M3,G215M4;RIPPM;1000
-2;G215_k27me3_Male;G215_k27me3_Female;G215M1,G215M2;G215M3,G215M4;DIFFREPS;1000
+# The format of the configuration file is the following:
+# num, treatment_name, control_name, treatment_samples, control_samples, normalization(RIPPM, DIFFREPS), diffreps_window
+#
+# spaces between columns are not required they will be removed during processing
+# all names should not contain spaces at all
+# samples should be separated by "|" character 
+# header not required
+# real example of configuration 
+# 1, G215K4me1_Male, G215K4me1_Female, G215M5|G215M6, G215M7|G215M8, RIPPM, 1000
+# 2, G215K4me1_Male, G215K4me1_Female, G215M5|G215M6, G215M7|G215M8, DIFFREPS, 1000

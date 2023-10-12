@@ -26,8 +26,8 @@ while IFS=';' read -r num treatment_name control_name treatment_samples control_
     sed -i "s/TEMPLATE_DIFFREPS_WINDOW/${diffreps_window}/g" Run_Jobs.sh
     sed -i "s/TEMPLATE_NORMALIZATION/\"${norm}\"/g" Run_Jobs.sh
     
-    ctrl_samples=`echo "${control_samples}" | sed -e 's/,/|/g'`
-    treatment_samples=`echo "${treatment_samples}" | sed -e 's/,/|/g'`
+    #ctrl_samples=`echo "${control_samples}" | sed -e 's/,/|/g'`
+    #treatment_samples=`echo "${treatment_samples}" | sed -e 's/,/|/g'`
     sed -i "s/TEMPLATE_CONTROL_SAMPLES/\"${ctrl_samples}\"/g" Run_Jobs.sh
     sed -i "s/TEMPLATE_TREATMENT_SAMPLES/\"${treatment_samples}\"/g" Run_Jobs.sh
     
