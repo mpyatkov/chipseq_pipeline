@@ -1,4 +1,4 @@
-####################################################################################
+###################################################################################
 #Andy Rampersaud
 #10.26.2017
 #This R script is used to parse the diffReps output files
@@ -265,7 +265,7 @@ FDR_Counts <- rbind(FDR_lt_0.05[[2]], FDR_lt_0.01[[2]], FDR_lt_0.005[[2]], FDR_l
 ##http://stackoverflow.com/questions/13576139/how-to-display-value-in-a-stacked-bar-chart-by-using-geom-text
 FDR_plot <- ggplot(FDR_Counts, aes(factor(FDR_Label), Freq, fill=Var1)) +
   geom_bar(stat="identity", position = "dodge") + 
-  scale_fill_brewer(palette = "Set1") +
+  scale_fill_brewer(palette = "Set1", direction=-1) +
   ggtitle(paste("Effect of FDR cutoff on number condition-specific sites")) + 
   ylab("Count of Condition-specific Regions") + 
   xlab("FDR Threshold") +
