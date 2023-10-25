@@ -47,7 +47,7 @@ sample_labels <- read_tsv(argv$sample_labels, col_names=T) %>%
 xls <- map_dfr(list.files(pattern = "*peaks.xls"), function (xls_fname){
   # fname <- str_extract(xls_fname,"^G\\d+\\w+\\d+(?=_MACS)")
   tmp <- read_tsv(xls_fname, comment = "#", col_names = T) %>% 
-    select(peak_id = name, length, pileup, fold_enrichment, log10_qvalue = `-log10(qvalue)`)
+    select(peak_id = name, length, pileup, fold_enrichment, log10_qvalue = `minus_log10_qvalue`) #-log10(qvalue) -- was originaly in MACS2 file
 })
 
 extra_details <- left_join(read_tsv("combined.output", col_names = F), xls, by = c("X8" = "peak_id")) %>% 

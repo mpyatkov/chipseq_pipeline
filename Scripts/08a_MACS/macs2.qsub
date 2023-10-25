@@ -223,6 +223,9 @@ function apply_blacklist_xls(){
 
     #Add header section back on:
     cat Header1.txt Header2.txt filtered.txt > $xls
+
+    # replace -log10(pvalue/qvalue) and -log10(qvalue) to minus_log10_pvalue/qvalue
+    sed -i -E 's/-log10\(/minus_log10_/g;s/value\)/value/g' $xls
     
     #Remove temp files:
     rm Header*.txt
