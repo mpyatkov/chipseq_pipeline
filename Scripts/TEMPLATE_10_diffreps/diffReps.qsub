@@ -160,29 +160,29 @@ do
     BED_List=*.bed.gz
     for c in ${BED_List}
     do
-	BED_Name=${c%\.bed.gz}
-	gzip -d ${BED_Name}'.bed.gz'
-	Line_Count=$(wc -l < ${BED_Name}'.bed')	
-	Column_Count=$(awk -F'\t' '{print NF; exit}' ${BED_Name}'.bed')
+        BED_Name=${c%\.bed.gz}
+        gzip -d ${BED_Name}'.bed.gz'
+        Line_Count=$(wc -l < ${BED_Name}'.bed') 
+        Column_Count=$(awk -F'\t' '{print NF; exit}' ${BED_Name}'.bed')
 
-	echo ${BED_Name}'.bed column count:'
-	echo ${Column_Count}
+        echo ${BED_Name}'.bed column count:'
+        echo ${Column_Count}
 
-	#Need an if statement to deal with BED3 -> BED6 file conversions
-	if [ ${Column_Count} -eq 3 ] ; 
-	then
-	    echo "BED files have 3 columns. Start: convert BED3 to BED6 format"
+        #Need an if statement to deal with BED3 -> BED6 file conversions
+        if [ ${Column_Count} -eq 3 ] ; 
+        then
+            echo "BED files have 3 columns. Start: convert BED3 to BED6 format"
 
-	    awk -v BED_Name="${BED_Name}" '{print $1"\t"$2"\t"$3"\t"BED_Name"\t"1000"\t""."}' ${BED_Name}'.bed' > ${BED_Name}'.temp1'
-	    mv ${BED_Name}'.temp1' ${BED_Name}'.bed'
-	    Column_Count=$(awk -F'\t' '{print NF; exit}' ${BED_Name}'.bed')
-	    echo "${BED_Name}.bed column count: ${Column_Count}"
+            awk -v BED_Name="${BED_Name}" '{print $1"\t"$2"\t"$3"\t"BED_Name"\t"1000"\t""."}' ${BED_Name}'.bed' > ${BED_Name}'.temp1'
+            mv ${BED_Name}'.temp1' ${BED_Name}'.bed'
+            Column_Count=$(awk -F'\t' '{print NF; exit}' ${BED_Name}'.bed')
+            echo "${BED_Name}.bed column count: ${Column_Count}"
 
-	    echo "Done: convert BED3 to BED6 format"
-	fi
-	
-	Line_Count_Formatted=$(echo ${Line_Count} | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')
-	echo "${BED_Name}.bed line count: ${Line_Count_Formatted}"
+            echo "Done: convert BED3 to BED6 format"
+        fi
+        
+        Line_Count_Formatted=$(echo ${Line_Count} | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')
+        echo "${BED_Name}.bed line count: ${Line_Count_Formatted}"
     done
     popd
 done
@@ -223,7 +223,7 @@ cd ${TMPDIR}
 echo 'Save Control and Treatment file lists to variables'
 
 pushd Input/Control
-Control_List=$(ls -l *.bed| awk '{print $9}' | tr "\n" " ")
+Control_List=$(ls -l *.bed| awk '{print $9}' | sort -t "M" -k2 -n | tr "\n" " ")
 echo 'Control_List:'
 echo $Control_List
 
@@ -232,7 +232,7 @@ mv *.bed ../../
 popd 
 
 pushd Input/Treatment
-Treatment_List=$(ls -l *.bed| awk '{print $9}' | tr "\n" " ")
+Treatment_List=$(ls -l *.bed| awk '{print $9}' | sort -t "M" -k2 -n | tr "\n" " ")
 echo 'Treatment_List:'
 echo $Treatment_List
 #Need to move bed files to same dir as Perl script
@@ -265,13 +265,16 @@ echo 'Starting diffReps.pl'
 #Use $NSLOTS env. variable to use multiple cores
 
 if [ "${NUM_REP_Control}" == "1" ] || [ "${NUM_REP_Treatment}" == "1" ]; then
-    (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt)
-
+    if [ -f "norm.txt" ]; then
+        (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt --norm "norm.txt")
+    else
+        (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt)
+    fi
 else
     if [ -f "norm.txt" ]; then
-	(cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --norm norm.txt)
+        (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --norm norm.txt)
     else
-	(cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS)
+        (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS)
     fi
 fi
 
@@ -419,21 +422,21 @@ do
     Description=${myArray[2]}
     if [ "${Input_Sites_RiPPM}" == "MACS2" ] ;
     then
-	echo 'Note: ${Input_Sites_RiPPM} was set to MACS2.'
-	echo 'Therefore, the corresponding macs2 BED file will be copied to the Peaks_Called folder.'
-	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_narrow_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
+        echo 'Note: ${Input_Sites_RiPPM} was set to MACS2.'
+        echo 'Therefore, the corresponding macs2 BED file will be copied to the Peaks_Called folder.'
+        cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_narrow_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
     fi
 
     if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
     then
-	# echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
-	# echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-	# find ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output -name "*.scoreiland" | xargs -I % cp %  ${Peaks_Called_DIR}/%.bed
+        # echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
+        # echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
+        # find ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output -name "*.scoreiland" | xargs -I % cp %  ${Peaks_Called_DIR}/%.bed
 
-	pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-	Peaks_Called_File=$(ls *.scoreisland)
-	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
-	popd
+        pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+        Peaks_Called_File=$(ls *.scoreisland)
+        cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
+        popd
     fi
 
     #Check if the ${Input_Sites_RiPPM} was set properly
@@ -441,9 +444,9 @@ do
     #I want to check if the variable does not match both values
     if [ "${Input_Sites_RiPPM}" != "MACS2" ] && [ "${Input_Sites_RiPPM}" != "SICER" ]
     then
-	echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
-	echo 'Zero input sites will be used for the Peaks_Called folder.'
-	echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
+        echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
+        echo 'Zero input sites will be used for the Peaks_Called folder.'
+        echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
     fi
 
 done < Control_Samples.temp
@@ -458,28 +461,28 @@ do
     Description=${myArray[2]}
     if [ "${Input_Sites_RiPPM}" == "MACS2" ] ;
     then
-	echo 'Note: ${Input_Sites_RiPPM} was set to MACS2.'
-	echo 'Therefore, the corresponding macs2 BED file will be copied to the Peaks_Called folder.'
-	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_narrow_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
+        echo 'Note: ${Input_Sites_RiPPM} was set to MACS2.'
+        echo 'Therefore, the corresponding macs2 BED file will be copied to the Peaks_Called folder.'
+        cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_narrow_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
     fi
 
     if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
     then
-	# echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
-	# echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-	# find "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" -name "*.scoreiland" | xargs -I % cp % ${Peaks_Called_DIR}/%.bed
+        # echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
+        # echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
+        # find "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" -name "*.scoreiland" | xargs -I % cp % ${Peaks_Called_DIR}/%.bed
 
-	pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-	Peaks_Called_File=$(ls *.scoreisland)
-	cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
-	popd
+        pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
+        Peaks_Called_File=$(ls *.scoreisland)
+        cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
+        popd
     fi
 
     if [ "${Input_Sites_RiPPM}" != "MACS2" ] && [ "${Input_Sites_RiPPM}" != "SICER" ]
     then
-	echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
-	echo 'Zero input sites will be used for the Peaks_Called folder.'
-	echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
+        echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
+        echo 'Zero input sites will be used for the Peaks_Called folder.'
+        echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
     fi
 
 done < Treatment_Samples.temp
