@@ -2,3 +2,8 @@
 *.o*
 *.po*
 *.txt
+G*
+10_*
+*.log
+Job_Summary
+Peak_Union
