@@ -20,8 +20,12 @@ while IFS=',' read -r num treatment_name control_name treatment_samples control_
 
     pushd "../${template_name}"
 
+    sed -i "s/TEMPLATE_CONTROL_NAME/${control_name}/g" Summarize_Jobs.sh
+    sed -i "s/TEMPLATE_TREATMENT_NAME/${treatment_name}/g" Summarize_Jobs.sh
+    
     sed -i "s/TEMPLATE_CONTROL_NAME/${control_name}/g" Run_Jobs.sh
     sed -i "s/TEMPLATE_TREATMENT_NAME/${treatment_name}/g" Run_Jobs.sh
+    
     sed -i "s/TEMPLATE_COMPARISON_NUMBER/${num}/g" Run_Jobs.sh
     sed -i "s/TEMPLATE_DIFFREPS_WINDOW/${diffreps_window}/g" Run_Jobs.sh
     sed -i "s/TEMPLATE_NORMALIZATION/\"${norm}\"/g" Run_Jobs.sh
