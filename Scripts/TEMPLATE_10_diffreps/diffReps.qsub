@@ -62,27 +62,10 @@ echo $TMPDIR
 module load bedtools/2.27.1
 module load R/3.6.0
 
-# module load diffreps/1.55.6
-# There is no more diffreps module on SCC, and I did not find it in conda repositories
-# so just installed in home directory using the following commands (I use zsh as main shell):
-
-# ## installing plenv 
-# cd ~
-# git clone https://github.com/tokuhirom/plenv.git ~/.plenv
-# echo 'export PATH="$HOME/.plenv/bin:$PATH"' >> ~/.
-# echo 'eval "$(plenv init -)"' >> .zshrc
-# exec $SHELL -l
-# ## installing cpanm
-# git clone https://github.com/tokuhirom/Perl-Build.git ~/.plenv/plugins/perl-build/
-# plenv install-cpanm
-# ## installing diffreps
-# mkdir ~/dist && cd ~/dist
-# wget https://github.com/shenlab-sinai/diffreps/archive/refs/tags/1.55.6.tar.gz
-# ~/perl5/bin/cpanm 1.55.6.tar.gz
-# ~/perl5/bin/cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
-
-## this command allow us to use home directory as a library to load dependecies for diffreps
-cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib)
+set +eu
+module load miniconda
+conda activate /projectnb/wax-es/routines/condaenv/perlenv
+set -eu
 
 #Output dir:
 OUTPUT_DIR=${SCRIPT_DIR}/'Output_diffReps_'${COMPAR_NUM}
