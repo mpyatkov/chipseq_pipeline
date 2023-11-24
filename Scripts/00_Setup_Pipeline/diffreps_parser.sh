@@ -23,7 +23,7 @@ while IFS=',' read -r num treatment_name control_name treatment_samples control_
     sed -i "s/TEMPLATE_CONTROL_NAME/${control_name}/g" Summarize_Jobs.sh
     sed -i "s/TEMPLATE_TREATMENT_NAME/${treatment_name}/g" Summarize_Jobs.sh
     sed -i "s/TEMPLATE_NORMALIZATION/\"${norm}\"/g" Summarize_Jobs.sh
-    sed -i "s/TEMPLATE_CONTROL_SAMPLES/\"${ctrl_samples}\"/g" Summarize_Jobs.sh
+    sed -i "s/TEMPLATE_CONTROL_SAMPLES/\"${control_samples}\"/g" Summarize_Jobs.sh
     sed -i "s/TEMPLATE_TREATMENT_SAMPLES/\"${treatment_samples}\"/g" Summarize_Jobs.sh
 
     sed -i "s/TEMPLATE_CONTROL_NAME/${control_name}/g" Run_Jobs.sh
@@ -34,7 +34,7 @@ while IFS=',' read -r num treatment_name control_name treatment_samples control_
     
     #ctrl_samples=`echo "${control_samples}" | sed -e 's/,/|/g'`
     #treatment_samples=`echo "${treatment_samples}" | sed -e 's/,/|/g'`
-    sed -i "s/TEMPLATE_CONTROL_SAMPLES/\"${ctrl_samples}\"/g" Run_Jobs.sh
+    sed -i "s/TEMPLATE_CONTROL_SAMPLES/\"${control_samples}\"/g" Run_Jobs.sh
     sed -i "s/TEMPLATE_TREATMENT_SAMPLES/\"${treatment_samples}\"/g" Run_Jobs.sh
     
     popd
