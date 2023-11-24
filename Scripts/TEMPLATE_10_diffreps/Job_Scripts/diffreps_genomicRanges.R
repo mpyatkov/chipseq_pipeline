@@ -293,7 +293,7 @@ plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_macs2 = F
     arrange(delta)
   
   ## names with numbers
-  nm <- inner_join(tibble(delta = col_names),
+  nm <- left_join(tibble(delta = col_names),
                    df.histogram %>% select(delta, n) %>% distinct() %>% arrange(delta)) %>%
     mutate(delta = str_glue("{delta} ({n})")) %>%
     select(-n) %>% pull(delta)
@@ -307,7 +307,8 @@ plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_macs2 = F
     geom_histogram(binwidth=.1)+ ## alpha = 0.9
     # scale_fill_manual(name = "Site_Category", values = as.vector(cols_vector), labels = names(cols_vector))+
     scale_fill_manual(name = str_glue("Site_Category ({nrow(df.histogram)} total sites)"), 
-                      values = c("lightblue", "pink", "grey","blue", "red"))+
+                      values = c("lightblue", "pink", "grey","blue", "red"),
+                      drop = FALSE)+
     ggtitle(str_glue("{title_extra}")) + 
     ylab("Count of Condition-specific Regions") + 
     xlab("log2(Fold Change)")+
@@ -316,9 +317,9 @@ plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_macs2 = F
           legend.text=element_text(size=10))
 }
   
-title_unfiltered = str_glue("Unfiltered {TREATMENT_NAME}/{CONTROL_NAME}. Fold Change for diffReps condition-specific sites\n",
-                            "{TREATMENT_NAME}/{CONTROL_NAME}_Signif: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
-                            "{TREATMENT_NAME}/{CONTROL_NAME}_Marginal: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
+title_unfiltered = str_glue("Unfiltered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
+                            "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
+                            "Marginal siters filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
 #title_unfiltered <- str_glue(top_header,"\n",title_unfiltered)
 hist_unfiltered <- plot_histogram(gr.ann.noblack.extra, 
                                   log2fc_cutoff = log2fc_cutoff, 
@@ -328,9 +329,9 @@ hist_unfiltered <- plot_histogram(gr.ann.noblack.extra,
                                   log2fc_label = 2^log2fc_cutoff)
 
 
-title_filtered = str_glue("MACS2 filtered {TREATMENT_NAME}/{CONTROL_NAME}. Fold Change for diffReps condition-specific sites\n",
-                            "{TREATMENT_NAME}/{CONTROL_NAME}_Signif: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
-                            "{TREATMENT_NAME}/{CONTROL_NAME}_Marginal: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
+title_filtered = str_glue("MACS2 filtered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
+                            "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
+                            "Marginal siters filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
 #title_filtered <- str_glue(top_header,"\n",title_filtered)
 hist_filtered <- plot_histogram(gr.ann.noblack.extra, 
                                 log2fc_cutoff = log2fc_cutoff, 
@@ -342,7 +343,7 @@ hist_filtered <- plot_histogram(gr.ann.noblack.extra,
 histograms <- hist_unfiltered + hist_filtered+plot_annotation(title = top_header)
 #output_name_histograms <- str_glue("Histograms_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.pdf")
 output_name_histograms <- str_glue("Histograms_{TREATMENT_NAME}_vs_{CONTROL_NAME}.pdf")
-ggsave(output_name_histograms, plot = histograms, height = 8.5, width = 16)
+ggsave(output_name_histograms, plot = histograms, height = 9, width = 18)
 
 #### barplot by features
 #### input: gr.ann.noblack.extra
