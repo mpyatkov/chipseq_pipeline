@@ -59,16 +59,18 @@ echo "=========================================================="
 cd ${TMPDIR}
 echo $TMPDIR
 
-module load bedtools/2.27.1
-module load R/3.6.0
+## bedtools is required for diffReps
+module load bedtools
 
+## load conda environment for diffReps
+echo "Activating conda environment"
 set +eu
 module load miniconda
 conda activate /projectnb/wax-es/routines/condaenv/perlenv
 set -eu
 
 #Output dir:
-OUTPUT_DIR=${SCRIPT_DIR}/'Output_diffReps_'${COMPAR_NUM}
+OUTPUT_DIR="${SCRIPT_DIR}/Output_diffReps"
 
 #Using an if statement to make the output folder if it does not exists
 mkdir -p $OUTPUT_DIR
@@ -78,22 +80,9 @@ cp ${SCRIPT_DIR}/Control_Samples.txt .
 cp ${SCRIPT_DIR}/Treatment_Samples.txt .
 
 set +eu
-## copying norm factors for diffReps
+## copying norm factors for diffReps if exist
 cp ${SCRIPT_DIR}/norm.txt .
 set -eu
-
-#Copy over diffReps_Summary.* scripts
-cp ${SCRIPT_DIR}/Job_Scripts/diffReps_Summary.* .
-
-#Copy over the Additional_Peak_Calls folder
-cp -r ${SCRIPT_DIR}/Additional_Peak_Calls .
-
-#ENCODE has a list of blacklisted sites that should be removed:
-#https://sites.google.com/site/anshulkundaje/projects/blacklists
-
-#Need to copy ENCODE_Blacklist regions:
-cp ${SCRIPT_DIR}/Job_Scripts/ENCODE_Blacklist/mm9-blacklist.bed.gz .
-gzip -d mm9-blacklist.bed.gz
 
 #Note:
 #"Up" events will be when Treatment>Control
@@ -247,273 +236,51 @@ echo 'Starting diffReps.pl'
 #Try manually setting the window and step size (instead of using --mode n)
 #Use $NSLOTS env. variable to use multiple cores
 
+report_name="diffReps_${Treatment_Samples_NAME}.vs.${Control_Samples_NAME}"
+
+# if [ "${NUM_REP_Control}" == "1" ] || [ "${NUM_REP_Treatment}" == "1" ]; then
+#     if [ -f "norm.txt" ]; then
+#         (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report ${report_name} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt --norm "norm.txt")
+#     else
+#         (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report ${report_name} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt)
+#     fi
+# else
+#     if [ -f "norm.txt" ]; then
+#         (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report ${report_name} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --norm norm.txt)
+#     else
+#         (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report ${report_name} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS)
+#     fi
+# fi
+
 if [ "${NUM_REP_Control}" == "1" ] || [ "${NUM_REP_Treatment}" == "1" ]; then
     if [ -f "norm.txt" ]; then
-        (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt --norm "norm.txt")
+        (set -x; time diffReps.pl --treatment $Treatment_List --control $Control_List --report ${report_name} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt --norm "norm.txt")
     else
-        (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt)
+        (set -x; time diffReps.pl --treatment $Treatment_List --control $Control_List --report ${report_name} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --meth gt)
     fi
 else
     if [ -f "norm.txt" ]; then
-        (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --norm norm.txt)
+        (set -x; time diffReps.pl --treatment $Treatment_List --control $Control_List --report ${report_name} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS --norm norm.txt)
     else
-        (cpanm --local-lib=~/perl5 local::lib && eval $(perl -I ~/perl5/lib/perl5/ -Mlocal::lib); set -x; time ~/perl5/bin/diffReps.pl --treatment $Treatment_List --control $Control_List --report 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS)
+        (set -x; time diffReps.pl --treatment $Treatment_List --control $Control_List --report ${report_name} --gname mm9 --window ${WINDOW_SIZE} --nsd broad --frag ${FRAG_SIZE} --nproc $NSLOTS)
     fi
 fi
 
+
 echo 'Ending diffReps.pl'
+
+ls -la
 
 #Copy files back to storage
 #Output files have the pattern: output_results*
 cp 'diffReps_'* $OUTPUT_DIR
 
-#Make the rest of the script easier to read: save long output file name as another variable
-Output_Name='diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME}
-
-
-echo 'BEFORE ENCODE_Blacklist filter:'
-
-Count1_Before=$(wc -l < $OUTPUT_DIR/${Output_Name})
-echo "Output file line count: ${Count1_Before}"
-
-Count2_Before=$(wc -l < $OUTPUT_DIR/${Output_Name}'.annotated')
-echo "Output.annotated file line count: ${Count2_Before}"
-
-Count3_Before=$(wc -l < $OUTPUT_DIR/${Output_Name}'.hotspot')
-echo "Output.hotspot file line count: echo ${Count3_Before}"
-
-pushd $OUTPUT_DIR
-
-#Copy files to output folder:
-cp ${TMPDIR}/mm9-blacklist.bed ./
-echo 'Overlap BED file with mm9-blacklist.bed and filter out overlap'
-#Need to filter the ${Output_Name} file
-#This file has a header section from line 1 to line 32
-#Rather than hard-code the line numbers, better to search for "#" in the first character
-#Use grep command to search for "#" at the start of each line:
-grep '^#' ${Output_Name} > Header1.txt
-#Want everything after the header section (doesn't match "#" at the start of each line)
-grep -v '^#' ${Output_Name} > Coordinates1.txt
-#Save 2nd section of header lines:
-head -1 Coordinates1.txt > Header2.txt
-#Get rid of first header line:
-awk 'FNR > 1' Coordinates1.txt > Coordinates2.txt
-#Filter:
-intersectBed -v -a Coordinates2.txt -b mm9-blacklist.bed > filtered.txt
-#Add header section back on:
-cat Header1.txt Header2.txt filtered.txt > ${Output_Name}.filtered
-#Replace original file:
-mv ${Output_Name}.filtered ${Output_Name}
-
-#Need to filter the ${Output_Name}'.annotated' file
-#Save header line
-head -1 ${Output_Name}'.annotated' > Header1.txt
-#Get rid of first header line:
-awk 'FNR > 1' ${Output_Name}'.annotated' > Coordinates1.txt
-#Filter:
-intersectBed -v -a Coordinates1.txt -b mm9-blacklist.bed > filtered.txt
-#Add header section back on:
-cat Header1.txt filtered.txt > ${Output_Name}'.annotated'.filtered
-#Replace original file:
-mv ${Output_Name}'.annotated'.filtered ${Output_Name}'.annotated'
-
-#Need to filter the ${Output_Name}'.hotspot' file
-#This file has a header section from line 1 to line 2
-#Rather than hard-code the line numbers, better to search for "#" in the first character
-#Use grep command to search for "#" at the start of each line:
-grep '^#' ${Output_Name}'.hotspot' > Header1.txt
-#Want everything after the header section (doesn't match "#" at the start of each line)
-grep -v '^#' ${Output_Name}'.hotspot' > Coordinates1.txt
-#Save 2nd section of header lines:
-head -1 Coordinates1.txt > Header2.txt
-#Get rid of first header line:
-awk 'FNR > 1' Coordinates1.txt > Coordinates2.txt
-#Filter:
-intersectBed -v -a Coordinates2.txt -b mm9-blacklist.bed > filtered.txt
-#Add header section back on:
-cat Header1.txt Header2.txt filtered.txt > ${Output_Name}.filtered
-#Replace original file:
-mv ${Output_Name}.filtered ${Output_Name}'.hotspot'
-
-#Remove temp files:
-rm Header*.txt
-rm Coordinates*.txt
-rm filtered.txt
-rm mm9-blacklist.bed
-popd ## ${OUTPUT_DIR}
-
-
-echo 'AFTER ENCODE_Blacklist filter:'
-echo 'Output file line count:'
-Count1_Filename=${Output_Name}
-Count1_After=$(wc -l < $OUTPUT_DIR/${Output_Name})
-echo ${Count1_After}
-#Calculate the difference: (Count1_Before - Count1_After)
-Count1_Diff=$(echo "$Count1_Before - $Count1_After" | bc)
-echo 'Number of regions lost:'
-echo ${Count1_Diff}
-
-echo 'Output.annotated file line count:'
-Count2_Filename=${Output_Name}'.annotated'
-Count2_After=$(wc -l < $OUTPUT_DIR/${Output_Name}'.annotated')
-echo ${Count2_After}
-#Calculate the difference: (Count2_Before - Count2_After)
-Count2_Diff=$(echo "$Count2_Before - $Count2_After" | bc)
-echo 'Number of regions lost:'
-echo ${Count2_Diff}
-
-echo 'Output.hotspot file line count:'
-Count3_Filename=${Output_Name}'.hotspot'
-Count3_After=$(wc -l < $OUTPUT_DIR/${Output_Name}'.hotspot')
-echo ${Count3_After}
-#Calculate the difference: (Count3_Before - Count3_After)
-Count3_Diff=$(echo "$Count3_Before - $Count3_After" | bc)
-echo 'Number of regions lost:'
-echo ${Count3_Diff}
-
-Overlap_Summary=$OUTPUT_DIR/ENCODE_Blacklist_Overlap_Summary.txt
-rm -rf ${Overlap_Summary}
-
-echo 'Creating '${Overlap_Summary}
-#Print header(s) to output file:
-echo 'Filtering ENCODE blacklisted sites' > ${Overlap_Summary}
-echo Filename $'\t'Before_Filter $'\t'After_Filter $'\t'Sites_Lost >> ${Overlap_Summary}
-echo 'Printing to output file'
-echo ${Count1_Filename} $'\t'${Count1_Before} $'\t'${Count1_After} $'\t'${Count1_Diff} >> ${Overlap_Summary}
-echo ${Count2_Filename} $'\t'${Count2_Before} $'\t'${Count2_After} $'\t'${Count2_Diff} >> ${Overlap_Summary}
-echo ${Count3_Filename} $'\t'${Count3_Before} $'\t'${Count3_After} $'\t'${Count3_Diff} >> ${Overlap_Summary}
-echo 'Finished '${Overlap_Summary}
-
-echo 'Starting diffReps_Summary.* scripts'
-
-#Copy diffReps_Summary.* scripts to the output folder:
-cp ${TMPDIR}/diffReps_Summary.* $OUTPUT_DIR
-
-echo 'Create and populate Peaks_Called folder'
-
-Peaks_Called_DIR=$OUTPUT_DIR/Peaks_Called
-rm -rf ${Peaks_Called_DIR} && mkdir -p ${Peaks_Called_DIR}
-
-echo 'Copy control samples peak BED files'
-
-#Text file has a header line to ignore:
-tail -n +2 Control_Samples.txt > Control_Samples.temp
-while IFS=$'\t' read -r -a myArray
-do
-    Sample_DIR=${myArray[0]}
-    Sample_ID=${myArray[1]}
-    Description=${myArray[2]}
-    if [ "${Input_Sites_RiPPM}" == "MACS2" ] ;
-    then
-        echo 'Note: ${Input_Sites_RiPPM} was set to MACS2.'
-        echo 'Therefore, the corresponding macs2 BED file will be copied to the Peaks_Called folder.'
-        cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_narrow_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
-    fi
-
-    if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
-    then
-        # echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
-        # echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-        # find ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output -name "*.scoreiland" | xargs -I % cp %  ${Peaks_Called_DIR}/%.bed
-
-        pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-        Peaks_Called_File=$(ls *.scoreisland)
-        cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
-        popd
-    fi
-
-    #Check if the ${Input_Sites_RiPPM} was set properly
-    #Need the "and" conditional (&&):
-    #I want to check if the variable does not match both values
-    if [ "${Input_Sites_RiPPM}" != "MACS2" ] && [ "${Input_Sites_RiPPM}" != "SICER" ]
-    then
-        echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
-        echo 'Zero input sites will be used for the Peaks_Called folder.'
-        echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
-    fi
-
-done < Control_Samples.temp
-rm Control_Samples.temp
-
-echo 'Copy treatment samples peak BED files'
-tail -n +2 Treatment_Samples.txt > Treatment_Samples.temp
-while IFS=$'\t' read -r -a myArray
-do
-    Sample_DIR=${myArray[0]}
-    Sample_ID=${myArray[1]}
-    Description=${myArray[2]}
-    if [ "${Input_Sites_RiPPM}" == "MACS2" ] ;
-    then
-        echo 'Note: ${Input_Sites_RiPPM} was set to MACS2.'
-        echo 'Therefore, the corresponding macs2 BED file will be copied to the Peaks_Called folder.'
-        cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_MACS2_output'/${Sample_ID}'_narrow_MACS2_peaks.narrowPeak.bed' ${Peaks_Called_DIR}
-    fi
-
-    if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
-    then
-        # echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
-        # echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-        # find "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output" -name "*.scoreiland" | xargs -I % cp % ${Peaks_Called_DIR}/%.bed
-
-        pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-        Peaks_Called_File=$(ls *.scoreisland)
-        cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${Peaks_Called_DIR}/${Peaks_Called_File}'.bed'
-        popd
-    fi
-
-    if [ "${Input_Sites_RiPPM}" != "MACS2" ] && [ "${Input_Sites_RiPPM}" != "SICER" ]
-    then
-        echo 'WARNING: ${Input_Sites_RiPPM} was not set to either MACS2 or SICER.'
-        echo 'Zero input sites will be used for the Peaks_Called folder.'
-        echo 'Specify either MACS2 or SICER for the Input_Sites_RiPPM variable.'
-    fi
-
-done < Treatment_Samples.temp
-rm Treatment_Samples.temp
-
-#Copy extra user provided BED files from Additional_Peak_Calls into Peaks_Called_DIR
-#cp ${TMPDIR}/BED_Regions/*.bed ${Peaks_Called_DIR}
-
-#Move Additional_Peak_Calls folder to OUTPUT_DIR
-#The diffReps_Summary.sh script will deal with the BED files
-set +eu
-cp -a ${TMPDIR}/Additional_Peak_Calls ${OUTPUT_DIR}
-set -eu
-
-#Change dir to call script:
-cd $OUTPUT_DIR
-
-echo 'Running diffReps_Summary.sh'
-#2-fold delta-sites:
-# set +eu
-(set -x; ./diffReps_Summary.sh 'diffReps_'${Control_Samples_NAME}'.vs.'${Treatment_Samples_NAME}.annotated ${Control_Samples_NAME} ${Treatment_Samples_NAME} diffReps_${COMPAR_NUM} 1)
-# set -eu
-
-echo 'Ending diffReps_Summary.* scripts'
-
-#Need to concatenate the:
-#1. ${Overlap_Summary} (ENCODE_Blacklist_Overlap_Summary.txt)
-#2. diffReps_overlap_peaks_summary.txt
-#Already in $OUTPUT_DIR
-cat ${Overlap_Summary} diffReps_overlap_peaks_summary.txt > diffReps_sites_summary.txt
-#Remove files:
-rm ${Overlap_Summary}
-rm diffReps_overlap_peaks_summary.txt
-cd ..
-
-#Remove scripts from $OUTPUT_DIR
-rm $OUTPUT_DIR/diffReps_Summary.*
-#---------------------------------------------------------------------------------
-
-echo "List files:"
-ls -alh
-
 echo "=========================================================="
 echo "Finished on : $(date)"
-#Use to calculate job time:
-#End_Time in seconds
 End_Time=$(date +"%s")
 diff=$(($End_Time-$Start_Time))
 echo "$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed."
 echo "=========================================================="
 echo "IAMOK"
+
+

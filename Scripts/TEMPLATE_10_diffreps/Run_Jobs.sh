@@ -51,4 +51,4 @@ DIR_name=`basename ${SCRIPT_DIR}`
 Step_Num=$(echo ${DIR_name} | cut -d'_' -f 1)
 Job_Name="Step_${Step_Num}_${Dataset_Label}"
 
-(set -x; qsub -N ${Job_Name}'_diffReps_'${COMPAR_NUM} -P wax-es -q !linga diffReps.qsub ${Dataset_DIR} ${Dataset_Label} ${Control_Samples_NAME} ${Treatment_Samples_NAME} ${COMPAR_NUM} ${WINDOW_SIZE} ${FRAG_SIZE} ${Input_Sites_RiPPM} ${SCRIPT_DIR})
+(set -x; qsub -N ${Job_Name}'_diffReps_'${COMPAR_NUM} -P wax-es -q diffReps.qsub ${Dataset_DIR} ${Dataset_Label} ${Control_Samples_NAME} ${Treatment_Samples_NAME} ${COMPAR_NUM} ${WINDOW_SIZE} ${FRAG_SIZE} ${Input_Sites_RiPPM} ${SCRIPT_DIR})
