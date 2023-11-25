@@ -251,7 +251,7 @@ filtered_fdrplot <- fdrs_plot(FDRs,
 final_fdr_barchart <- unfiltered_fdrplot+filtered_fdrplot+plot_annotation(title = top_header)
 
 # output_name_fdrbarchart <- str_glue("FDR_Barchart_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.pdf")
-output_name_fdrbarchart <- str_glue("FDR_Barchart_{TREATMENT_NAME}_vs_{CONTROL_NAME}.pdf")
+output_name_fdrbarchart <- str_glue("FDR_Barchart_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.pdf")
 ggsave(output_name_fdrbarchart, plot = final_fdr_barchart, height = 7, width = 14)
 
 
@@ -342,7 +342,7 @@ hist_filtered <- plot_histogram(gr.ann.noblack.extra,
 
 histograms <- hist_unfiltered + hist_filtered+plot_annotation(title = top_header)
 #output_name_histograms <- str_glue("Histograms_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.pdf")
-output_name_histograms <- str_glue("Histograms_{TREATMENT_NAME}_vs_{CONTROL_NAME}.pdf")
+output_name_histograms <- str_glue("Histograms_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.pdf")
 ggsave(output_name_histograms, plot = histograms, height = 9, width = 18)
 
 #### barplot by features
@@ -437,7 +437,7 @@ final_feature_barchart <- (unfiltered_up_barchart+unfiltered_down_barchart)/(fil
   plot_annotation(title = top_header)
 
 # output_name_barchart <- str_glue("Barchart_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.pdf")
-output_name_barchart <- str_glue("Barchart_{TREATMENT_NAME}_vs_{CONTROL_NAME}.pdf")
+output_name_barchart <- str_glue("Barchart_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.pdf")
 ggsave(output_name_barchart, plot = final_feature_barchart, width = 11, height = 8.5)
 
 
@@ -445,8 +445,8 @@ ggsave(output_name_barchart, plot = final_feature_barchart, width = 11, height =
 #### EXPORT DATA ####
 ######## export hotspots as bed file
 # hotspot_fname <- str_glue("diffReps_Hotspots_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}_UCSC.bed")
-hotspot_fname <- str_glue("diffReps_Hotspots_UCSC_{TREATMENT_NAME}_vs_{CONTROL_NAME}.bed")
-hotspot_header <- str_glue("echo track name=diffReps_Hotspots visibility=4 itemRgb=On")
+hotspot_fname <- str_glue("diffReps_Hotspots_UCSC_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.bed")
+hotspot_header <- str_glue("echo track name=Hotspots_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
 write_lines(hotspot_header, hotspot_fname)
 
 gr.hotspots.noblack %>% 
@@ -472,6 +472,10 @@ gr.hotspots.noblack %>%
 # S1_diff_data_BED <- cbind(S1_diff_data$"Chrom",S1_diff_data$"Start",S1_diff_data$"End",S1_diff,"1000",".","0","0","0,0,255")
 # S2_diff_data_BED <- cbind(S2_diff_data$"Chrom",S2_diff_data$"Start",S2_diff_data$"End",S2_diff,"1000",".","0","0","255,0,0")
 
+ucsc_fname <- str_glue("UCSC_track_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.bed")
+ucsc_header <- str_glue("echo track name={histone_mark}_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
+write_lines(ucsc_header, ucsc_fname)
+
 gr.ann.noblack.extra %>% 
   as_tibble() %>% 
   filter(significant == 1) %>% 
@@ -485,7 +489,7 @@ gr.ann.noblack.extra %>%
   select(-Event) %>% 
   arrange(seqnames,start) %>% 
   #write_tsv(str_glue("UCSC_track_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}_UCSC.bed"), col_names = F)
-  write_tsv(str_glue("UCSC_track_{TREATMENT_NAME}_vs_{CONTROL_NAME}.bed"), col_names = F)
+  write_tsv(file = ucsc_fname, append = T, col_names = F)
 
 ### XLSX files for filtered and unfiltered
 ### TODO: export in csv format
@@ -565,7 +569,7 @@ writeData(wb, sheet = sheet_name, str_glue("TREATMENT samples: {treatment_sample
 writeData(wb, sheet = sheet_name, filtered_xls, startRow = 5, startCol = 1)
 
 # saveWorkbook(wb, str_glue("Summary_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.xlsx"), overwrite = T)
-saveWorkbook(wb, str_glue("Summary_{TREATMENT_NAME}_vs_{CONTROL_NAME}.xlsx"), overwrite = T)
+saveWorkbook(wb, str_glue("Summary_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.xlsx"), overwrite = T)
 
 
 
