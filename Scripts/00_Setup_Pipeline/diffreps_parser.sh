@@ -13,7 +13,7 @@ while IFS=',' read -r num treatment_name control_name treatment_samples control_
     echo $norm
     echo $diffreps_window
     
-    template_name="10_diffreps_${num}_${treatment_name}_vs_${control_name}_${norm}"
+    template_name="10_diffreps_${num}_${treatment_name}_vs_${control_name}_${norm}_w${diffreps_window}"
     rm -rf "../${template_name}"
     
     cp -a ../TEMPLATE_10_diffreps "../${template_name}"
@@ -25,7 +25,8 @@ while IFS=',' read -r num treatment_name control_name treatment_samples control_
     sed -i "s/TEMPLATE_NORMALIZATION/\"${norm}\"/g" Summarize_Jobs.sh
     sed -i "s/TEMPLATE_CONTROL_SAMPLES/\"${control_samples}\"/g" Summarize_Jobs.sh
     sed -i "s/TEMPLATE_TREATMENT_SAMPLES/\"${treatment_samples}\"/g" Summarize_Jobs.sh
-
+    sed -i "s/TEMPLATE_DIFFREPS_WINDOW/${diffreps_window}/g" Summarize_Jobs.sh
+    
     sed -i "s/TEMPLATE_CONTROL_NAME/${control_name}/g" Run_Jobs.sh
     sed -i "s/TEMPLATE_TREATMENT_NAME/${treatment_name}/g" Run_Jobs.sh
     sed -i "s/TEMPLATE_NORMALIZATION/\"${norm}\"/g" Run_Jobs.sh

@@ -11,6 +11,7 @@ Treatment_Samples_NAME=TEMPLATE_TREATMENT_NAME
 NORMALIZATION=TEMPLATE_NORMALIZATION
 CONTROL_SAMPLES=TEMPLATE_CONTROL_SAMPLES
 TREATMENT_SAMPLES=TEMPLATE_TREATMENT_SAMPLES
+WINDOW_SIZE=TEMPLATE_DIFFREPS_WINDOW
 
 # Control_Samples_NAME=G215K27ac_Female
 # Treatment_Samples_NAME=G215K27ac_Male
@@ -145,7 +146,7 @@ pushd ${OUTPUT_DIR}
                  --treatment_name ${Treatment_Samples_NAME} \
                  --peak_caller ${Input_Sites_RiPPM} \
                  --histone_mark ${Dataset_Label} \
-                 --normalization_caller ${NORMALIZATION} \
+                 --normalization_caller "${NORMALIZATION}_${WINDOW_SIZE}" \
                  --treatment_samples ${TREATMENT_SAMPLES} \
                  --control_samples ${CONTROL_SAMPLES})
 
