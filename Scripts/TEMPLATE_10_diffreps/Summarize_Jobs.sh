@@ -108,24 +108,22 @@ function copy_sample() {
 
         if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
         then
-            # echo 'Note: ${Input_Sites_RiPPM} was set to SICER.'
-            # echo 'Therefore, the corresponding SICER BED file will be copied to the Peaks_Called folder.'
-            # find ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output -name "*.scoreiland" | xargs -I {} cp {}  ${PEAKS_CALLED_DIR}/{}.bed
-
-            pushd ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'
-            Peaks_Called_File=$(ls *.scoreisland)
-            cp ${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}'_SICER_output'/${Peaks_Called_File} ${PEAKS_CALLED_DIR}/${Peaks_Called_File}'.bed'
-            popd
+            cp "${Dataset_DIR}/${Sample_ID}/fastq/bowtie2/${Sample_ID}_SICER_output/"*.scoreisland ./
         fi
+        
     done
 } 
 
 ## copy control and treatment samples
 control_treatment_samples=($(cat Control_Samples.txt Treatment_Samples.txt | grep -v Sample_DIR | cut -f1 | paste -s -d " "))
-mkdir -p ${OUTPUT_DIR}/XLSfiles/
-pushd ${OUTPUT_DIR}/XLSfiles/
+
+mkdir -p ${OUTPUT_DIR}/XLSfiles/ && pushd ${OUTPUT_DIR}/XLSfiles/
+
 copy_sample ${control_treatment_samples[@]}
+
+set +eu
 sed -i -E 's/-log10\(/minus_log10_/g;s/value\)/value/g' *.xls
+set -eu
 popd
 
 ## copy Sample_Labels.txt

@@ -62,19 +62,25 @@ control_samples <- argv$control_samples
 if (DEBUG){
   setwd("/projectnb/wax-dk/max/exp_diffreps_genomicRanges/")
   ## input params
-  annotated_path <- "/projectnb2/wax-dk/max/G207_SG_CHIPSEQ_K27ac/Scripts/10_diffReps_1/Output_diffReps_1.diffreps_normalization.w1000/diffReps_Female_Control.vs.Male_Treatment.annotated"
-  hotspot_path <- "/projectnb2/wax-dk/max/G207_SG_CHIPSEQ_K27ac/Scripts/10_diffReps_1/Output_diffReps_1.diffreps_normalization.w1000/diffReps_Female_Control.vs.Male_Treatment.hotspot"
-  blmm9_path <- "/projectnb/wax-dk/max/G215_k4me1_k27ac_k9ac/Scripts/10_diffreps_G215K27ac_Male_vs_G215K27ac_Female_RIPPM_3/Job_Scripts/ENCODE_Blacklist/mm9-blacklist.bed.gz"
-  macs2_xls_dir_path <- "/projectnb/wax-dk/max/G207_SG_CHIPSEQ_K27ac/Scripts/10_diffReps_1/Output_diffReps_1.diffreps_normalization.w1000/XLSfiles"
-  sample_labels_path <- "/projectnb/wax-dk/max/G207_SG_CHIPSEQ_K27ac/Scripts/00_Setup_Pipeline/Sample_Labels.txt"
+  # annotated_path <- "/projectnb2/wax-dk/max/G207_SG_CHIPSEQ_K27ac/Scripts/10_diffReps_1/Output_diffReps_1.diffreps_normalization.w1000/diffReps_Female_Control.vs.Male_Treatment.annotated"
+  # hotspot_path <- "/projectnb2/wax-dk/max/G207_SG_CHIPSEQ_K27ac/Scripts/10_diffReps_1/Output_diffReps_1.diffreps_normalization.w1000/diffReps_Female_Control.vs.Male_Treatment.hotspot"
+  # blmm9_path <- "/projectnb/wax-dk/max/G215_k4me1_k27ac_k9ac/Scripts/10_diffreps_G215K27ac_Male_vs_G215K27ac_Female_RIPPM_3/Job_Scripts/ENCODE_Blacklist/mm9-blacklist.bed.gz"
+  # macs2_xls_dir_path <- "/projectnb/wax-dk/max/G207_SG_CHIPSEQ_K27ac/Scripts/10_diffReps_1/Output_diffReps_1.diffreps_normalization.w1000/XLSfiles"
+  # sample_labels_path <- "/projectnb/wax-dk/max/G207_SG_CHIPSEQ_K27ac/Scripts/00_Setup_Pipeline/Sample_Labels.txt"
   
-  peak_caller <- "MACS2"
+  main_path <- "/projectnb/wax-dk/max/G207_K27ac_updated/Scripts/10_diffreps_1_Male_vs_Female_DIFFREPS_w1000/Output_diffReps/"
+  annotated_path <- str_glue("{main_path}/diffReps_Male.vs.Female.annotated")
+  hotspot_path <- str_glue("{main_path}/diffReps_Male.vs.Female.hotspot")
+  blmm9_path <- str_glue("{main_path}../Job_Scripts/ENCODE_Blacklist/mm9-blacklist.bed.gz")
+  macs2_xls_dir_path <- str_glue("{main_path}/XLSfiles")
+  sample_labels_path <- str_glue("{main_path}/Sample_Labels.txt")
+  
+  peak_caller <- "SICER"
   min_avg_count <- 20
   log2fc_cutoff <- 1
   CONTROL_NAME <- "Female"
   TREATMENT_NAME <- "Male"
   
-  peak_caller <- "MACS2"
   histone_mark <- "G207_K27ac"
   normalization_caller <- "DIFFREPS"
   treatment_samples <- "G207M1,G207M2"
@@ -106,25 +112,51 @@ sample_labels <- read_tsv(sample_labels_path, col_names = T) %>%
 
 ######## MACS2 xls for extended info
 ######## TODO: add similar to SICER
-macs2_xls <- lapply(list.files(path = macs2_xls_dir_path, full.names = T), function(fname){
-  fname_prefix <- str_extract(basename(fname), "G[[:alnum:]]+")
 
-  ## select only specific columns
-  tmp <- read_tsv(fname, col_names = T, comment = "#") %>%
-    select(seqnames = chr, start, end, length, pileup, fold_enrichment, dplyr::any_of(c("-log10(qvalue)","minus_log10_qvalue")), peak_id = name) %>% ## -log10(qvalue)
-    #rename_with(., function(x){"minus_log10_qvalue"}, starts_with("-")) %>%  ## rename -log10(qvalue) to minus_log10_qvalue if exist
-    mutate(sample_id = sample_labels[fname_prefix],   ## assing sample_id_description instead of sample_id
-           start = start - 1)                         ## start shift to 1, because MACS2 bed files have same shift, I just aligned to output MACS2 bed files
-}) %>% 
-  purrr::reduce(bind_rows) %>% 
-  as_granges()
+peakcaller_xls <- if (peak_caller == "MACS2") {
+  lapply(list.files(path = macs2_xls_dir_path, full.names = T), function(fname){
+    fname_prefix <- str_extract(basename(fname), "G[[:alnum:]]+")
+    
+    ## select only specific columns
+    tmp <- read_tsv(fname, col_names = T, comment = "#") %>%
+      select(seqnames = chr, start, end, length, pileup, fold_enrichment, dplyr::any_of(c("-log10(qvalue)","minus_log10_qvalue")), peak_id = name) %>% ## -log10(qvalue)
+      #rename_with(., function(x){"minus_log10_qvalue"}, starts_with("-")) %>%  ## rename -log10(qvalue) to minus_log10_qvalue if exist
+      mutate(sample_id = sample_labels[fname_prefix],   ## assing sample_id_description instead of sample_id
+             start = start - 1)                         ## start shift to 1, because MACS2 bed files have same shift, I just aligned to output MACS2 bed files
+  }) %>% 
+    purrr::reduce(bind_rows) %>% 
+    as_granges()
+} else {
+  ## SICER
+  lapply(list.files(path = macs2_xls_dir_path, full.names = T), function(fname){
+    fname_prefix <- str_extract(basename(fname), "G[[:alnum:]]+")
+    
+    ## select only specific columns
+    tmp <- read_tsv(fname, col_names = F, comment = "#") %>%
+      select(seqnames = X1, start = X2, end = X3, fold_enrichment = X4) %>% ## -log10(qvalue)
+      mutate(sample_id = sample_labels[fname_prefix])
+  }) %>% 
+    purrr::reduce(bind_rows) %>% 
+    as_granges()
+}
 
-macs2_union  <- macs2_xls %>% 
-  as_tibble() %>% 
-  select(seqnames,start,end,peak_id) %>% 
-  as_granges() %>% 
-  GenomicRanges::reduce(., min.gapwidth = 0L) %>% 
-  plyranges::mutate(macs2_overlap = 1)
+## MACS2/SICER merging peaks
+peakcaller_union  <- if (peak_caller == "MACS2") {
+  peakcaller_xls %>% 
+    as_tibble() %>% 
+    select(seqnames,start,end,peak_id) %>% 
+    as_granges() %>% 
+    GenomicRanges::reduce(., min.gapwidth = 0L) %>% 
+    plyranges::mutate(peakcaller_overlap = 1)
+} else {
+  ## SICER does not have peak_id
+  peakcaller_xls %>% 
+    as_tibble() %>% 
+    select(seqnames,start,end) %>% 
+    as_granges() %>% 
+    GenomicRanges::reduce(., min.gapwidth = 0L) %>% 
+    plyranges::mutate(peakcaller_overlap = 1)
+  }
 
 ######## load diffReps output annotated or "with header" files
 gr.annotated <- read_tsv(annotated_path, col_names = T, comment = "#") %>% 
@@ -159,10 +191,10 @@ if (blmm9_path != "default") {
 ##### appending meta columns #####
 gr.ann.noblack.extra <- gr.ann.noblack
 
-######## create meta columns with MACS2 intersection
-gr.ann.noblack.extra <- join_overlap_left(gr.ann.noblack.extra, macs2_union) %>% 
+######## create meta columns with MACS2/SICER intersection
+gr.ann.noblack.extra <- join_overlap_left(gr.ann.noblack.extra, peakcaller_union) %>% 
   as_tibble() %>% 
-  replace_na(list(macs2_overlap = 0)) %>% 
+  replace_na(list(peakcaller_overlap = 0)) %>% 
   distinct() %>% 
   as_granges()
 
@@ -203,20 +235,20 @@ gr.ann.noblack.extra <- gr.ann.noblack.extra %>%
 FDRs <- c(0.05, 0.01, 0.005, 0.001)
 
 
-fdrs_plot <- function(fdrs, df, macs2_overlap_flag = F, extra_title = "") {
+fdrs_plot <- function(fdrs, df, peakcaller_overlap_flag = F, extra_title = "") {
   
   ## if some Up/Down is NA we have to assign them to 0
   fake <- tibble(FDR = rep(c(FDRs),2), Event = rep(c("Up","Down"), each = 4))
 
   df.barplot_fdr <- map_dfr(fdrs, function(fdr) {
     df %>% 
-      filter(if (!macs2_overlap_flag) {
+      filter(if (!peakcaller_overlap_flag) {
         significant == 1 & padj < fdr
       } else {
-        significant == 1 & padj < fdr & macs2_overlap == 1
+        significant == 1 & padj < fdr & peakcaller_overlap == 1
       }
       ) %>% 
-      #filter(significant == 1 & padj < fdr & macs2_overlap == 1) %>% 
+      #filter(significant == 1 & padj < fdr & peakcaller_overlap == 1) %>% 
       select(Event) %>% 
       as_tibble() %>% 
       dplyr::summarise(n = n(), .by = "Event") %>% 
@@ -238,20 +270,20 @@ unfiltered_fdrplot_title <- str_glue("Unfiltered {TREATMENT_NAME}/{CONTROL_NAME}
                             "Filtering options: |log2FC| > {log2fc_cutoff}, avg.count > {min_avg_count}\n")
 unfiltered_fdrplot <- fdrs_plot(FDRs, 
                                 gr.ann.noblack.extra, 
-                                macs2_overlap = F, 
+                                peakcaller_overlap = F, 
                                 extra_title = unfiltered_fdrplot_title)
 
 filtered_fdrplot_title <- str_glue("{peak_caller} filtered {TREATMENT_NAME}/{CONTROL_NAME}.\nEffect of FDR cutoff on number condition-specific sites\n",
                                     "Filtering options: |log2FC| > {log2fc_cutoff}, avg.count > {min_avg_count}\n")
 filtered_fdrplot <- fdrs_plot(FDRs, 
                               gr.ann.noblack.extra, 
-                              macs2_overlap = T, 
+                              peakcaller_overlap = T, 
                               extra_title = filtered_fdrplot_title)
 
 final_fdr_barchart <- unfiltered_fdrplot+filtered_fdrplot+plot_annotation(title = top_header)
 
 # output_name_fdrbarchart <- str_glue("FDR_Barchart_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.pdf")
-output_name_fdrbarchart <- str_glue("FDR_Barchart_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.pdf")
+output_name_fdrbarchart <- str_glue("FDR_Barchart_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller}.pdf")
 ggsave(output_name_fdrbarchart, plot = final_fdr_barchart, height = 7, width = 14)
 
 
@@ -266,7 +298,7 @@ ggsave(output_name_fdrbarchart, plot = final_fdr_barchart, height = 7, width = 1
 # S1_marginal_delta <- diffReps_output[diffReps_output$Event =="Up" & diffReps_output$log2FC > (log2FC_cutoff) & diffReps_output$Treatment.avg <= min_avg_count,]
 # S1_real_delta <- diffReps_output[diffReps_output$Event =="Up" & diffReps_output$log2FC > (log2FC_cutoff) & diffReps_output$Treatment.avg > min_avg_count,]
 
-plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_macs2 = F, title_extra = "", log2fc_label = 1) {
+plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_peakcaller_overlap = F, title_extra = "", log2fc_label = 1) {
   
   col_names <- c(str_glue("{CONTROL_NAME}_Signif_sites"),
                  str_glue("{CONTROL_NAME}_Marginal_sites"),
@@ -276,13 +308,14 @@ plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_macs2 = F
   
   df.histogram <- df
   
-  if (filter_by_macs2){
+  if (filter_by_peakcaller_overlap){
     df.histogram <- df.histogram %>% 
-      filter(macs2_overlap == 1)
+      filter(peakcaller_overlap == 1)
   }
   
   df.histogram <- df.histogram %>% 
     as_tibble() %>% 
+    filter(padj < 0.05) %>% 
     mutate(delta = case_when(Event == "Down" & abs(log2FC) > log2fc_cutoff & Control.avg > min_avg_count & padj < 0.05 ~ col_names[[1]],
                              Event == "Down" & abs(log2FC) > log2fc_cutoff & Control.avg <= min_avg_count & padj < 0.05 ~ col_names[[2]],
                              Event == "Up" & abs(log2FC) > log2fc_cutoff & Treatment.avg <= min_avg_count & padj < 0.05 ~ col_names[[4]],
@@ -319,30 +352,30 @@ plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_macs2 = F
   
 title_unfiltered = str_glue("Unfiltered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
                             "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
-                            "Marginal siters filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
+                            "Marginal sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
 #title_unfiltered <- str_glue(top_header,"\n",title_unfiltered)
 hist_unfiltered <- plot_histogram(gr.ann.noblack.extra, 
                                   log2fc_cutoff = log2fc_cutoff, 
                                   min_avg_count = min_avg_count, 
-                                  filter_by_macs2 = F, 
+                                  filter_by_peakcaller_overlap = F, 
                                   title_extra = title_unfiltered, 
                                   log2fc_label = 2^log2fc_cutoff)
 
 
-title_filtered = str_glue("MACS2 filtered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
+title_filtered = str_glue("{peak_caller} filtered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
                             "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
-                            "Marginal siters filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
+                            "Marginal sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
 #title_filtered <- str_glue(top_header,"\n",title_filtered)
 hist_filtered <- plot_histogram(gr.ann.noblack.extra, 
                                 log2fc_cutoff = log2fc_cutoff, 
                                 min_avg_count = min_avg_count, 
-                                filter_by_macs2 = T, 
+                                filter_by_peakcaller_overlap = T, 
                                 title_extra = title_filtered, 
                                 log2fc_label = 2^log2fc_cutoff)
 
 histograms <- hist_unfiltered + hist_filtered+plot_annotation(title = top_header)
 #output_name_histograms <- str_glue("Histograms_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.pdf")
-output_name_histograms <- str_glue("Histograms_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.pdf")
+output_name_histograms <- str_glue("Histograms_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller}.pdf")
 ggsave(output_name_histograms, plot = histograms, height = 9, width = 18)
 
 #### barplot by features
@@ -415,7 +448,7 @@ unfiltered_down_barchart <- barchart_feature(feature_colors, unf_df.down_feature
 ## FILTERED
 filt_df.up_feature <- gr.ann.noblack.extra %>% 
   as_tibble() %>% 
-  filter(up_significant == 1 & macs2_overlap == 1) %>% 
+  filter(up_significant == 1 & peakcaller_overlap == 1) %>% 
   count(Feature = factor(Feature)) %>% 
   mutate(pct = prop.table(n))
 
@@ -424,7 +457,7 @@ filtered_up_barchart <- barchart_feature(feature_colors, filt_df.up_feature, tit
 
 filt_df.down_feature <- gr.ann.noblack.extra %>% 
   as_tibble() %>% 
-  filter(down_significant == 1 & macs2_overlap == 1) %>% 
+  filter(down_significant == 1 & peakcaller_overlap == 1) %>% 
   count(Feature = factor(Feature)) %>% 
   mutate(pct = prop.table(n))
 
@@ -437,7 +470,7 @@ final_feature_barchart <- (unfiltered_up_barchart+unfiltered_down_barchart)/(fil
   plot_annotation(title = top_header)
 
 # output_name_barchart <- str_glue("Barchart_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.pdf")
-output_name_barchart <- str_glue("Barchart_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.pdf")
+output_name_barchart <- str_glue("Barchart_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller}.pdf")
 ggsave(output_name_barchart, plot = final_feature_barchart, width = 11, height = 8.5)
 
 
@@ -445,18 +478,20 @@ ggsave(output_name_barchart, plot = final_feature_barchart, width = 11, height =
 #### EXPORT DATA ####
 ######## export hotspots as bed file
 # hotspot_fname <- str_glue("diffReps_Hotspots_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}_UCSC.bed")
-hotspot_fname <- str_glue("diffReps_Hotspots_UCSC_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.bed")
-hotspot_header <- str_glue("echo track name=Hotspots_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
+hotspot_fname <- str_glue("diffReps_Hotspots_UCSC_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller}.bed")
+hotspot_header <- str_glue("track name=Hotspots_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
 write_lines(hotspot_header, hotspot_fname)
 
 gr.hotspots.noblack %>% 
   as_tibble() %>% 
   select(seqnames, start, end) %>% 
-  mutate(t1 = 1000,
-         t2 = ".",
-         t3 = 0,
-         t4 = 0,
-         t5 = "0,0,0") %>% 
+  mutate(
+    t0 = "Hotspot",
+    t1 = 1000,
+    t2 = ".",
+    t3 = 0,
+    t4 = 0,
+    t5 = "0,0,0") %>% 
   write_tsv(file = hotspot_fname, append = T, col_names = F)
 
 ### top200,600, bed output
@@ -472,15 +507,18 @@ gr.hotspots.noblack %>%
 # S1_diff_data_BED <- cbind(S1_diff_data$"Chrom",S1_diff_data$"Start",S1_diff_data$"End",S1_diff,"1000",".","0","0","0,0,255")
 # S2_diff_data_BED <- cbind(S2_diff_data$"Chrom",S2_diff_data$"Start",S2_diff_data$"End",S2_diff,"1000",".","0","0","255,0,0")
 
-ucsc_fname <- str_glue("UCSC_track_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{normalization_caller}.bed")
-ucsc_header <- str_glue("echo track name={histone_mark}_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
+ucsc_fname <- str_glue("UCSC_track_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller}.bed")
+ucsc_header <- str_glue("track name={histone_mark}_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
 write_lines(ucsc_header, ucsc_fname)
 
 gr.ann.noblack.extra %>% 
   as_tibble() %>% 
   filter(significant == 1) %>% 
   select(seqnames, start, end, Event) %>% 
-  mutate(t1 = 1000,
+  mutate(
+    t0 = case_when(Event == "Down" ~ CONTROL_NAME,
+                   TRUE ~ TREATMENT_NAME),
+    t1 = 1000,
          t2 = ".",
          t3 = 0,
          t4 = 0,
@@ -488,7 +526,6 @@ gr.ann.noblack.extra %>%
                         TRUE ~ "255,0,0")) %>% 
   select(-Event) %>% 
   arrange(seqnames,start) %>% 
-  #write_tsv(str_glue("UCSC_track_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}_UCSC.bed"), col_names = F)
   write_tsv(file = ucsc_fname, append = T, col_names = F)
 
 ### XLSX files for filtered and unfiltered
@@ -497,15 +534,15 @@ gr.ann.noblack.extra %>%
 
 unfiltered_xls <- gr.ann.noblack.extra %>% 
   as_tibble() %>% 
-  relocate(any_of(c("macs2_overlap","down_significant","up_significant","significant")), .after = Control.avg) %>% 
-  dplyr::rename(`Overlapped with MACS2` = macs2_overlap, 
+  relocate(any_of(c("peakcaller_overlap","down_significant","up_significant","significant")), .after = Control.avg) %>% 
+  dplyr::rename(`Overlapped with peak caller` = peakcaller_overlap, 
                 `Significant CONTROL` = down_significant, 
                 `Significant TREATMENT` = up_significant, 
                 `Significant by default thresholds` = significant) %>% 
   select(-Control.enr, -Treatment.enr) %>% 
   mutate(ucsc_coords = str_glue("{seqnames}:{start}-{end}")) %>% 
   relocate(ucsc_coords, .before = seqnames) %>% 
-  relocate(c("Overlapped with MACS2", 
+  relocate(c("Overlapped with peak caller", 
              "Significant CONTROL", 
              "Significant TREATMENT", 
              "Significant by default thresholds"), 
@@ -527,42 +564,45 @@ writeData(wb, sheet = sheet_name, unfiltered_xls, startRow = 5, startCol = 1)
 ### FILTERED XLSX
 ### required extended information about peaks
 
-filtered_xls <- join_overlap_left(gr.ann.noblack.extra %>% filter(macs2_overlap == 1), macs2_xls) %>%
+filtered_xls <- join_overlap_left(gr.ann.noblack.extra %>% filter(peakcaller_overlap == 1), peakcaller_xls) %>%
   as_tibble() %>% 
   distinct() %>% 
-  mutate(fake_score = fold_enrichment*pileup*length) %>% 
+  {if (peak_caller == "MACS2") {mutate(., fake_score = fold_enrichment*pileup*length)} else {mutate(.,fake_score = fold_enrichment)}} %>% 
   group_by(seqnames, start, end, sample_id) %>% 
   filter(fake_score == max(fake_score)) %>% 
-  #filter(fold_enrichment == max(fold_enrichment) & pileup == max(pileup) & length == max(length)) %>% ## alternative to fake_score ~ does not work properly
   ungroup() %>% 
   select(-fake_score) %>% 
   add_count(seqnames,start,end, name = "overlap_with_n_samples") %>% 
-  group_by(seqnames,start,end) %>% 
-  mutate(peak_ids = str_c(peak_id, collapse = ",")) %>% 
-  ungroup() %>% 
-  select(-peak_id) %>% 
-  pivot_longer(c("length", "pileup", "fold_enrichment", "minus_log10_qvalue"), values_to = "param") %>% 
+  {
+    if(peak_caller == "MACS2") {
+      group_by(., seqnames,start,end) %>% 
+        mutate(peak_ids = str_c(peak_id, collapse = ",")) %>% 
+        ungroup() %>% 
+        select(-peak_id) %>% 
+        pivot_longer(c("length", "pileup", "fold_enrichment", "minus_log10_qvalue"), values_to = "param")
+    } else{
+      pivot_longer(., "fold_enrichment", values_to = "param")
+    }
+  } %>% 
   pivot_wider(names_from = c("sample_id","name"), values_from = param, names_sort = T) %>% 
   mutate(ucsc_coords = str_glue("{seqnames}:{start}-{end}")) %>% 
   relocate(ucsc_coords, .before = seqnames) %>% 
   arrange(desc(overlap_with_n_samples), seqnames, start, end) %>% 
-  dplyr::rename(`Overlapped with MACS2` = macs2_overlap, 
+  dplyr::rename(`Overlapped with peak caller` = peakcaller_overlap, 
                 `Significant CONTROL` = down_significant, 
                 `Significant TREATMENT` = up_significant, 
                 `Significant by default thresholds` = significant,
                 `How many samples overlap with this region` = overlap_with_n_samples) %>% 
-  relocate(c("Overlapped with MACS2", 
+  relocate(c("Overlapped with peak caller", 
              "Significant CONTROL", 
              "Significant TREATMENT", 
              "Significant by default thresholds", 
              "How many samples overlap with this region"), 
            .before = seqnames)
 
-#write_xlsx(filtered_xls, path = str_glue("MACS2_filtered_sites_{histone_mark}_{TREATMENT_NAME}_{short_treatment_names}_vs_{CONTROL_NAME}_{short_control_names}.xlsx"))
-
-sheet_name <- str_glue("MACS2_filtered_sites")
+sheet_name <- str_glue("{peak_caller}_filtered_sites")
 addWorksheet(wb, sheetName = sheet_name)
-writeData(wb, sheet = sheet_name, str_glue("MACS2 filtered sites: {TREATMENT_NAME} (treatment)/{CONTROL_NAME} (control)"), startRow = 1, startCol = 1, colNames = FALSE)
+writeData(wb, sheet = sheet_name, str_glue("{peak_caller} filtered sites: {TREATMENT_NAME} (treatment)/{CONTROL_NAME} (control)"), startRow = 1, startCol = 1, colNames = FALSE)
 writeData(wb, sheet = sheet_name, str_glue("Default thresholds: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}"), startRow = 2, startCol = 1, colNames = FALSE)
 #writeData(wb, sheet = sheet_name, str_glue("TREATMENT samples: {short_treatment_names}, CONTROL samples: {short_control_names}"), startRow = 3, startCol = 1, colNames = FALSE)
 writeData(wb, sheet = sheet_name, str_glue("TREATMENT samples: {treatment_samples}, CONTROL samples: {control_samples}"), startRow = 3, startCol = 1, colNames = FALSE)
