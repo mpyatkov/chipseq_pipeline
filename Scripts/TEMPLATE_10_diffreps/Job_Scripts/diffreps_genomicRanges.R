@@ -59,6 +59,8 @@ normalization_caller <- argv$normalization_caller
 treatment_samples <- argv$treatment_samples
 control_samples <- argv$control_samples
 
+log2fc_label <- 2^log2fc_cutoff
+
 if (DEBUG){
   setwd("/projectnb/wax-dk/max/exp_diffreps_genomicRanges/")
   ## input params
