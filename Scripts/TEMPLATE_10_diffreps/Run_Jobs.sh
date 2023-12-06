@@ -27,21 +27,27 @@ if [ "$NORMALIZATION" = "RIPPM" ]; then
     #Extract normalization factors and represent them in the 1/factor
     # form, because diffreps works only with such representation
     
+    min_norm=$(cat ../09_RiPPM_Normalization/Job_Summary/Norm_Factors.txt | \
+                   grep -E "${CONTROL_SAMPLES}|${TREATMENT_SAMPLES}" | \
+                   cut -f3 |\
+                   sort -n |\
+                   head -1)
+
     control_norm_line=$(cat ../09_RiPPM_Normalization/Job_Summary/Norm_Factors.txt | \
-	grep -v FRAG | \
-	cut -f1,4 | \
-	awk '{printf "%s %.2f\n", $1, 1/$2}' | \
-	grep -E "${CONTROL_SAMPLES}" | \
-	cut -d " " -f2 | \
-	paste -s -d " ")
+	                    grep -v FRAG | \
+	                    cut -f1,3 | \
+                            awk -v mnorm="$min_norm" '{printf "%s %.2f\n", $1, $2/mnorm}'| \
+                            grep -E "${CONTROL_SAMPLES}" | \
+                            cut -d " " -f2 | \
+                            paste -s -d " ")
 
     treatment_norm_line=$(cat ../09_RiPPM_Normalization/Job_Summary/Norm_Factors.txt | \
-	grep -v FRAG | \
-	cut -f1,4 | \
-	awk '{printf "%s %.2f\n", $1, 1/$2}' | \
-	grep -E "${TREATMENT_SAMPLES}" | \
-	cut -d " " -f2 | \
-	paste -s -d " ")
+	                      grep -v FRAG | \
+	                      cut -f1,3 | \
+                              awk -v mnorm="$min_norm" '{printf "%s %.2f\n", $1, $2/mnorm}'| \
+                              grep -E "${TREATMENT_SAMPLES}" | \
+                              cut -d " " -f2 | \
+                              paste -s -d " ")
 
     echo "treatment ${treatment_norm_line}" > norm.txt
     echo "control ${control_norm_line}" >> norm.txt
