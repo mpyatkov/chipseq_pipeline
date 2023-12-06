@@ -56,8 +56,8 @@ TREATMENT_NAME <- argv$treatment_name
 peak_caller <- argv$peak_caller
 histone_mark <- argv$histone_mark
 normalization_caller <- argv$normalization_caller
-treatment_samples <- argv$treatment_samples
-control_samples <- argv$control_samples
+treatment_samples <- argv$treatment_samples %>% str_replace(., "\\|",",")
+control_samples <- argv$control_samples %>% str_replace(., "\\|",",")
 
 log2fc_label <- 2^log2fc_cutoff
 
@@ -300,14 +300,22 @@ ggsave(output_name_fdrbarchart, plot = final_fdr_barchart, height = 7, width = 1
 # S1_marginal_delta <- diffReps_output[diffReps_output$Event =="Up" & diffReps_output$log2FC > (log2FC_cutoff) & diffReps_output$Treatment.avg <= min_avg_count,]
 # S1_real_delta <- diffReps_output[diffReps_output$Event =="Up" & diffReps_output$log2FC > (log2FC_cutoff) & diffReps_output$Treatment.avg > min_avg_count,]
 
-plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_peakcaller_overlap = F, title_extra = "", log2fc_label = 1) {
+plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_peakcaller_overlap = F, title_extra = "", log2fc_label = 1, swap_colors = T) {
   
   col_names <- c(str_glue("{CONTROL_NAME}_Signif_sites"),
                  str_glue("{CONTROL_NAME}_Marginal_sites"),
                  str_glue("Less_{log2fc_label}-fold"),
                  str_glue("{TREATMENT_NAME}_Marginal_sites"),
                  str_glue("{TREATMENT_NAME}_Signif_sites"))
-  
+
+  histogram_colors <- if (swap_colors){
+    ## down - red, up - blue
+    c("pink", "lightblue", "grey","red", "blue")
+  } else {
+    ## up - red, down - blue
+    c("lightblue", "pink", "grey","blue", "red")    
+  }
+    
   df.histogram <- df
   
   if (filter_by_peakcaller_overlap){
@@ -342,7 +350,7 @@ plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_peakcalle
     geom_histogram(binwidth=.1)+ ## alpha = 0.9
     # scale_fill_manual(name = "Site_Category", values = as.vector(cols_vector), labels = names(cols_vector))+
     scale_fill_manual(name = str_glue("Site_Category ({nrow(df.histogram)} total sites)"), 
-                      values = c("lightblue", "pink", "grey","blue", "red"),
+                      values = histogram_colors, ## c("lightblue", "pink", "grey","blue", "red")
                       drop = FALSE)+
     ggtitle(str_glue("{title_extra}")) + 
     ylab("Count of Condition-specific Regions") + 
@@ -354,7 +362,7 @@ plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_peakcalle
   
 title_unfiltered = str_glue("Unfiltered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
                             "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
-                            "Marginal sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}",
+                            "Marginal sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}\n",
                             "Less_{log2fc_label}-fold: |log2FC| <= {log2fc_cutoff}, padj < 0.05\n")
 #title_unfiltered <- str_glue(top_header,"\n",title_unfiltered)
 hist_unfiltered <- plot_histogram(gr.ann.noblack.extra, 
@@ -366,8 +374,9 @@ hist_unfiltered <- plot_histogram(gr.ann.noblack.extra,
 
 
 title_filtered = str_glue("{peak_caller} filtered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
-                            "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
-                            "Marginal sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}")
+                          "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
+                          "Marginal sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}\n",
+                          "Less_{log2fc_label}-fold: |log2FC| <= {log2fc_cutoff}, padj < 0.05\n")
 #title_filtered <- str_glue(top_header,"\n",title_filtered)
 hist_filtered <- plot_histogram(gr.ann.noblack.extra, 
                                 log2fc_cutoff = log2fc_cutoff, 
