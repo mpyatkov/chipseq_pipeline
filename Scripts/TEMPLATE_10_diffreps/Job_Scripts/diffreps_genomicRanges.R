@@ -363,7 +363,7 @@ plot_histogram <- function(df, log2fc_cutoff, min_avg_count, filter_by_peakcalle
 title_unfiltered = str_glue("Unfiltered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
                             "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
                             "Marginal sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}\n",
-                            "Less_{log2fc_label}-fold: |log2FC| <= {log2fc_cutoff}, padj < 0.05\n")
+                            "Less_{log2fc_label}-fold filters: |log2FC| <= {log2fc_cutoff}, padj < 0.05\n")
 #title_unfiltered <- str_glue(top_header,"\n",title_unfiltered)
 hist_unfiltered <- plot_histogram(gr.ann.noblack.extra, 
                                   log2fc_cutoff = log2fc_cutoff, 
@@ -376,7 +376,7 @@ hist_unfiltered <- plot_histogram(gr.ann.noblack.extra,
 title_filtered = str_glue("{peak_caller} filtered {TREATMENT_NAME} / {CONTROL_NAME}.\nFold Change for diffReps condition-specific sites\n",
                           "Significant sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count > {min_avg_count}\n",
                           "Marginal sites filters: |log2FC| > {log2fc_cutoff}, padj < 0.05, avg.count <= {min_avg_count}\n",
-                          "Less_{log2fc_label}-fold: |log2FC| <= {log2fc_cutoff}, padj < 0.05\n")
+                          "Less_{log2fc_label}-fold filters: |log2FC| <= {log2fc_cutoff}, padj < 0.05\n")
 #title_filtered <- str_glue(top_header,"\n",title_filtered)
 hist_filtered <- plot_histogram(gr.ann.noblack.extra, 
                                 log2fc_cutoff = log2fc_cutoff, 
