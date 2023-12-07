@@ -519,9 +519,9 @@ gr.hotspots.noblack %>%
 # S1_diff_data_BED <- cbind(S1_diff_data$"Chrom",S1_diff_data$"Start",S1_diff_data$"End",S1_diff,"1000",".","0","0","0,0,255")
 # S2_diff_data_BED <- cbind(S2_diff_data$"Chrom",S2_diff_data$"Start",S2_diff_data$"End",S2_diff,"1000",".","0","0","255,0,0")
 
-ucsc_fname <- str_glue("UCSC_track_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller}.bed")
-ucsc_header <- str_glue("track name={histone_mark}_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
-write_lines(ucsc_header, ucsc_fname)
+ucsc_fname_unfiltered <- str_glue("UCSC_UNFILTERED_track_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller}.bed")
+ucsc_header_unfiltered <- str_glue("track name=UNFILTERED_{histone_mark}_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
+write_lines(ucsc_header_unfiltered, ucsc_fname_unfiltered)
 
 gr.ann.noblack.extra %>% 
   as_tibble() %>% 
@@ -538,7 +538,30 @@ gr.ann.noblack.extra %>%
                         TRUE ~ "255,0,0")) %>% 
   select(-Event) %>% 
   arrange(seqnames,start) %>% 
-  write_tsv(file = ucsc_fname, append = T, col_names = F)
+  write_tsv(file = ucsc_fname_unfiltered, append = T, col_names = F)
+
+
+## FILTERED, significant + peak_caller overlap
+ucsc_fname_filtered <- str_glue("UCSC_FILTERED_track_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller}.bed")
+ucsc_header_filtered <- str_glue("track name=FILTERED_{histone_mark}_{TREATMENT_NAME}_vs_{CONTROL_NAME}_{peak_caller}_{normalization_caller} visibility=4 itemRgb=On")
+write_lines(ucsc_header_filtered, ucsc_fname_filtered)
+
+gr.ann.noblack.extra %>% 
+  as_tibble() %>% 
+  filter(significant == 1 & peakcaller_overlap == 1) %>% 
+  select(seqnames, start, end, Event) %>% 
+  mutate(
+    t0 = case_when(Event == "Down" ~ CONTROL_NAME,
+                   TRUE ~ TREATMENT_NAME),
+    t1 = 1000,
+         t2 = ".",
+         t3 = 0,
+         t4 = 0,
+         t5 = case_when(Event == "Down" ~ "0,0,255",
+                        TRUE ~ "255,0,0")) %>% 
+  select(-Event) %>% 
+  arrange(seqnames,start) %>% 
+  write_tsv(file = ucsc_fname_filtered, append = T, col_names = F)
 
 ### XLSX files for filtered and unfiltered
 ### TODO: export in csv format
