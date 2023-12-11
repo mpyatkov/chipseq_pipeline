@@ -26,17 +26,23 @@ if [ "$NORMALIZATION" = "RIPPM" ]; then
     
     #Extract normalization factors and represent them in the 1/factor
     # form, because diffreps works only with such representation
-    
-    min_norm=$(cat ../09_RiPPM_Normalization/Job_Summary/Norm_Factors.txt | \
-                   grep -E "${CONTROL_SAMPLES}|${TREATMENT_SAMPLES}" | \
-                   cut -f3 |\
-                   sort -n |\
-                   head -1)
+
+    ## find minimum
+    # norm=$(cat ../09_RiPPM_Normalization/Job_Summary/Norm_Factors.txt | \
+    #                grep -E "${CONTROL_SAMPLES}|${TREATMENT_SAMPLES}" | \
+    #                cut -f3 |\
+    #                sort -n |\
+    #                head -1)
+
+    ## find average of all treated/control samples in comparison
+    norm=$(cat ../09_RiPPM_Normalization/Job_Summary/Norm_Factors.txt | \
+                    grep -E "${CONTROL_SAMPLES}|${TREATMENT_SAMPLES}" | \
+                    awk '{ sum += $3 } END { if (NR > 0) print sum / NR }')
 
     control_norm_line=$(cat ../09_RiPPM_Normalization/Job_Summary/Norm_Factors.txt | \
 	                    grep -v FRAG | \
 	                    cut -f1,3 | \
-                            awk -v mnorm="$min_norm" '{printf "%s %.2f\n", $1, $2/mnorm}'| \
+                            awk -v mnorm="$norm" '{printf "%s %.2f\n", $1, $2/mnorm}'| \
                             grep -E "${CONTROL_SAMPLES}" | \
                             cut -d " " -f2 | \
                             paste -s -d " ")
@@ -44,7 +50,7 @@ if [ "$NORMALIZATION" = "RIPPM" ]; then
     treatment_norm_line=$(cat ../09_RiPPM_Normalization/Job_Summary/Norm_Factors.txt | \
 	                      grep -v FRAG | \
 	                      cut -f1,3 | \
-                              awk -v mnorm="$min_norm" '{printf "%s %.2f\n", $1, $2/mnorm}'| \
+                              awk -v mnorm="$norm" '{printf "%s %.2f\n", $1, $2/mnorm}'| \
                               grep -E "${TREATMENT_SAMPLES}" | \
                               cut -d " " -f2 | \
                               paste -s -d " ")
