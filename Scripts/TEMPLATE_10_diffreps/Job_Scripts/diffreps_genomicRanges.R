@@ -41,6 +41,9 @@ library(openxlsx) #library(writexl)
 
 DEBUG <- FALSE
 
+## Swap colors for histogram and output bed tracks (Red<-->Blue)
+swap_colors <- T ## Blue - Up, Red - Down
+
 ## input params
 annotated_path <- argv$annotated_path
 hotspot_path <- argv$hotspot_path
@@ -534,8 +537,10 @@ gr.ann.noblack.extra %>%
          t2 = ".",
          t3 = 0,
          t4 = 0,
-         t5 = case_when(Event == "Down" ~ "0,0,255",
-                        TRUE ~ "255,0,0")) %>% 
+         t5 = case_when(Event == "Down" && swap_colors == F ~ "0,0,255",
+                        Event == "Down" && swap_colors == T ~ "255,0,0",
+                        Event == "Up" && swap_colors == F ~ "255,0,0",
+                        TRUE ~ "0,0,255")) %>% 
   select(-Event) %>% 
   arrange(seqnames,start) %>% 
   write_tsv(file = ucsc_fname_unfiltered, append = T, col_names = F)
@@ -557,8 +562,10 @@ gr.ann.noblack.extra %>%
          t2 = ".",
          t3 = 0,
          t4 = 0,
-         t5 = case_when(Event == "Down" ~ "0,0,255",
-                        TRUE ~ "255,0,0")) %>% 
+         t5 = case_when(Event == "Down" && swap_colors == F ~ "0,0,255",
+                        Event == "Down" && swap_colors == T ~ "255,0,0",
+                        Event == "Up" && swap_colors == F ~ "255,0,0",
+                        TRUE ~ "0,0,255")) %>% 
   select(-Event) %>% 
   arrange(seqnames,start) %>% 
   write_tsv(file = ucsc_fname_filtered, append = T, col_names = F)
