@@ -3,7 +3,9 @@ library(argparser)
 ParseArguments <- function() {
     p <- arg_parser('Parsing diffReps output')
     p <- add_argument(p,'--pattern', default="diffReps_", help="search pattern for diffReps output files")
-    p <- add_argument(p, '--path', default=".", help="path to the dir which contains diffReps output directories")
+    p <- add_argument(p, '--path', default="../../", help="path to the dir which contains diffReps output directories")
+    p <- add_argument(p, '--rippm_report', default="../../09_RiPPM_Normalization/Job_Summary/Peak_Union_Count_Stats.txt", 
+                      help="path to the file with rippm stats")
     p <- add_argument(p, '--output', default="Summary_normalization_factors.xlsx", help="output filename")
     return(parse_args(p))
 }
@@ -15,6 +17,10 @@ library(purrr)
 library(readr)
 library(dplyr)
 library(tidyr)
+library(openxlsx)
+
+rippm_report <- read_tsv(argv$rippm_report, col_names = T) %>% 
+  select(-4)
 
 files <- list.files(path = argv$path, pattern = argv$pattern, recursive = T, full.names = T) %>% 
     keep(function(x){str_detect(x,"\\.vs\\.") && str_detect(x,"annotated|hotspot", negate = T)})
@@ -61,15 +67,21 @@ tst <- map_dfr(files, function(f){
 })
 
 l1 <- tst %>% 
-    mutate(window = str_glue("{norm_caller}_{window}"),
-           sample_id = str_glue("{sample_id}_{group}"),
-           group = str_glue("{condition}_{group}")) %>% 
-    select(-norm_caller, -condition) %>% 
-    group_by(fname) %>% 
-    group_split()
+  left_join(.,rippm_report, by = c("sample_id" = "SAMPLE_ID")) %>% 
+  mutate(window = str_glue("{norm_caller}_{window}"),
+         sample_id = str_glue("{sample_id}_{group}"),
+         group = str_glue("{condition}_{group}")) %>% 
+  select(-norm_caller, -condition) %>% 
+  group_by(fname) %>% 
+  group_split()
 
 lgroup_to_ltables <- function(df) {
-    norm_factors_table <- df %>% pivot_wider(names_from = window, values_from = normfactors)
+  
+    rippm_table <- df %>% select(sample_id, starts_with("FRAGMENT")) %>% distinct()
+
+    norm_factors_table <- df %>% 
+      select(-starts_with("FRAGMENT")) %>% 
+      pivot_wider(names_from = window, values_from = normfactors)
 
     fname <- norm_factors_table %>% select(fname) %>% distinct() %>% pull(fname) %>% 
         str_replace_all(., "\\.", "_")
@@ -104,14 +116,15 @@ lgroup_to_ltables <- function(df) {
     res <- bind_rows(nf, all, by_groups, ratio_treat_ctrl)
     list(name =fname, 
          df = res, 
+         rippm_df = rippm_table,
          nrow = nrow(res), ## data + header+fname
          ncol = ncol(res))
 }
 
 
-tt1 <- map(l1, lgroup_to_ltables)
 
-library(openxlsx)
+
+tt1 <- map(l1, lgroup_to_ltables)
 
 sheet_name <- str_glue("diffReps normalization")
 wb <- createWorkbook()
@@ -122,6 +135,7 @@ cur_col <- 1
 for(l in tt1){
     writeData(wb, sheet = sheet_name, l$name, startRow = cur_row, startCol = cur_col, colNames = FALSE)
     writeData(wb, sheet = sheet_name, l$df, startRow = cur_row+1, startCol = cur_col)
+    writeData(wb, sheet = sheet_name, l$rippm_df, startRow = cur_row+1, startCol = l$ncol+2)
     cur_row <- 4+cur_row+l$nrow
 }
 saveWorkbook(wb, argv$output, overwrite = T)
