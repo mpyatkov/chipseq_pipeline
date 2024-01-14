@@ -3,8 +3,8 @@ library(argparser)
 ParseArguments <- function() {
     p <- arg_parser('Parsing diffReps output')
     p <- add_argument(p,'--pattern', default="diffReps_", help="search pattern for diffReps output files")
-    p <- add_argument(p, '--path', default="../../", help="path to the dir which contains diffReps output directories")
-    p <- add_argument(p, '--rippm_report', default="../../09_RiPPM_Normalization/Job_Summary/Peak_Union_Count_Stats.txt", 
+    p <- add_argument(p, '--path', default="../", help="path to the dir which contains diffReps output directories")
+    p <- add_argument(p, '--rippm_report', default="../09_RiPPM_Normalization/Job_Summary/Peak_Union_Count_Stats.txt", 
                       help="path to the file with rippm stats")
     p <- add_argument(p, '--output', default="Summary_normalization_factors.xlsx", help="output filename")
     return(parse_args(p))
