@@ -217,4 +217,4 @@ echo 'Check out '${OUTPUT_FILE_Wiggle}
 echo 'Check out '${OUTPUT_FILE_Wiggle_autoON}
 echo '#---------------------------------------------------------------------------'
 
-# cp -a ${OUTPUT_DIR} ${VM_DIR_UCSC}/
+cp -a ${OUTPUT_DIR} ${VM_DIR_UCSC}/
