@@ -92,7 +92,7 @@ do
 	echo 'Getting read count...'
 	#For single-end data search for: "# total tags in treatment:"
 	#For paired-end data search for: "total fragments in treatment:"
-	FRAGMENT_COUNT=$(grep 'total fragments in treatment:' ${Sample_ID}'_narrow_MACS2_peaks.xls' | awk '{print $NF}')
+	FRAGMENT_COUNT=$(grep 'in treatment:' ${Sample_ID}'_narrow_MACS2_peaks.xls' | awk '{print $NF}')
     fi
     
     if [ "${Input_Sites_RiPPM}" == "SICER" ] ;
